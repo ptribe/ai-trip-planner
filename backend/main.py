@@ -14,6 +14,7 @@ load_dotenv()
 # Arize and tracing imports
 from arize.otel import register
 from openinference.instrumentation.langchain import LangChainInstrumentor
+from openinference.instrumentation.litellm import LiteLLMInstrumentor
 from openinference.instrumentation import using_prompt_template
 
 # LangGraph and LangChain imports
@@ -27,6 +28,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_community.tools.tavily_search import TavilySearchResults
 
+# Configure LiteLLM
+import litellm
+litellm.set_verbose = True  # Enable debug logging for LiteLLM
+litellm.drop_params = True  # Drop unsupported parameters automatically
+
 # Initialize Arize tracing
 def setup_tracing():
     tracer_provider = register(
@@ -34,7 +40,9 @@ def setup_tracing():
         api_key=os.getenv("ARIZE_API_KEY", "your-arize-api-key"),
         project_name="trip-planner"
     )
+    # Instrument both LangChain and LiteLLM for comprehensive coverage
     LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
+    LiteLLMInstrumentor().instrument(tracer_provider=tracer_provider)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,42 +103,49 @@ def research_destination(destination: str, duration: str) -> str:
         search_tool = search_tools[0]
         search_results = search_tool.invoke(f"{destination} travel guide {duration} trip attractions weather")
         
-        prompt = f"""
-        Based on these search results about {destination}:
+        prompt_template = """Based on these search results about {destination}:
         {search_results}
         
-        Provide comprehensive destination research including:
+        Provide comprehensive destination research for a {duration} trip including:
         - Weather conditions and best time to visit
         - Top attractions and activities
         - Cultural considerations and customs
         - Transportation options
         - Safety information
-        - Seasonal factors for a {duration} trip
-        """
+        - Seasonal factors and considerations
+        - Local customs and etiquette
+        - Essential travel tips"""
+        
+        prompt_template_variables = {
+            "destination": destination,
+            "duration": duration,
+            "search_results": str(search_results)
+        }
     else:
-        prompt = f"""
-        Provide comprehensive destination research for {destination} for a {duration} trip including:
+        prompt_template = """Provide comprehensive destination research for {destination} for a {duration} trip including:
         - Weather conditions and best time to visit  
         - Top attractions and activities
         - Cultural considerations and customs
         - Transportation options
         - Safety information
         - Seasonal factors
-        Note: Using general knowledge as live search is unavailable.
-        """
-    
-    prompt_template_variables = {
-        "destination": destination,
-        "duration": duration,
-        "search_results": search_results if search_tools else "Not available"
-    }
+        - Local customs and etiquette
+        - Essential travel tips
+        
+        Note: Using general knowledge as live search is unavailable."""
+        
+        prompt_template_variables = {
+            "destination": destination,
+            "duration": duration
+        }
     
     with using_prompt_template(
-        template=prompt,
+        template=prompt_template,
         variables=prompt_template_variables,
-        version="1.0",
+        version="research-v1.0",
     ):
-        response = llm.invoke([SystemMessage(content=prompt)])
+        formatted_prompt = prompt_template.format(**prompt_template_variables)
+        response = llm.invoke([SystemMessage(content=formatted_prompt)])
     return response.content
 
 @tool
@@ -144,9 +159,8 @@ def analyze_budget(destination: str, duration: str, budget: str = None) -> str:
     """
     budget_text = budget or "provide options for different budget levels"
     
-    prompt = f"""
-    Analyze budget requirements for a {duration} trip to {destination}.
-    Target budget: {budget_text}
+    prompt_template = """Analyze budget requirements for a {duration} trip to {destination}.
+    Target budget: {budget}
     
     Include detailed breakdown of:
     - Accommodation costs (budget, mid-range, luxury options)
@@ -156,7 +170,8 @@ def analyze_budget(destination: str, duration: str, budget: str = None) -> str:
     - Miscellaneous expenses
     - Money-saving tips and strategies
     - Total estimated costs by budget tier
-    """
+    - Seasonal pricing considerations
+    - Value-for-money recommendations"""
     
     prompt_template_variables = {
         "destination": destination,
@@ -165,11 +180,12 @@ def analyze_budget(destination: str, duration: str, budget: str = None) -> str:
     }
     
     with using_prompt_template(
-        template=prompt,
+        template=prompt_template,
         variables=prompt_template_variables,
-        version="1.0",
+        version="budget-v1.0",
     ):
-        response = llm.invoke([SystemMessage(content=prompt)])
+        formatted_prompt = prompt_template.format(**prompt_template_variables)
+        response = llm.invoke([SystemMessage(content=formatted_prompt)])
     return response.content
 
 @tool
@@ -182,18 +198,18 @@ def curate_local_experiences(destination: str, interests: str = None) -> str:
     """
     interests_text = interests or "general exploration and cultural immersion"
     
-    prompt = f"""
-    Curate authentic local experiences for {destination} focusing on traveler interests: {interests_text}
+    prompt_template = """Curate authentic local experiences for {destination} focusing on traveler interests: {interests}
     
-    Include:
-    - Local restaurants and authentic cuisine spots (avoid tourist traps)
-    - Cultural activities and events
-    - Hidden gems and off-the-beaten-path locations
-    - Local markets and shopping areas
-    - Community experiences and interactions
+    Include recommendations for:
+    - Hidden gem restaurants and authentic cuisine spots (avoid tourist traps)
+    - Cultural activities and local events
+    - Off-the-beaten-path locations and experiences
+    - Traditional markets and unique shopping areas
+    - Community experiences and local interactions
     - Activities that match the specified interests
-    - Tips for respectful cultural engagement
-    """
+    - Local artisan workshops and craft experiences
+    - Traditional ceremonies or cultural events
+    - Tips for respectful cultural engagement and etiquette"""
     
     prompt_template_variables = {
         "destination": destination,
@@ -201,11 +217,12 @@ def curate_local_experiences(destination: str, interests: str = None) -> str:
     }
     
     with using_prompt_template(
-        template=prompt,
+        template=prompt_template,
         variables=prompt_template_variables,
-        version="1.0",
+        version="local-v1.0",
     ):
-        response = llm.invoke([SystemMessage(content=prompt)])
+        formatted_prompt = prompt_template.format(**prompt_template_variables)
+        response = llm.invoke([SystemMessage(content=formatted_prompt)])
     return response.content
 
 @tool
@@ -222,9 +239,8 @@ def create_itinerary(destination: str, duration: str, research: str, budget_info
     """
     style_text = travel_style or "Standard"
     
-    prompt = f"""
-    Create a comprehensive day-by-day itinerary for {destination} lasting {duration}.
-    Travel style: {style_text}
+    prompt_template = """Create a comprehensive day-by-day itinerary for {destination} lasting {duration}.
+    Travel style: {travel_style}
     
     Base the itinerary on this information:
     
@@ -241,13 +257,13 @@ def create_itinerary(destination: str, duration: str, research: str, budget_info
     - Specific daily schedules with timings
     - Mix of popular attractions and local experiences
     - Restaurant recommendations for each day
-    - Transportation suggestions
-    - Estimated daily costs
-    - Practical tips and considerations
-    - Backup plans for weather/closures
+    - Transportation suggestions between locations
+    - Estimated daily costs and budget considerations
+    - Practical tips and logistical considerations
+    - Backup plans for weather or closure situations
+    - Balance of must-see attractions and leisure time
     
-    Format as a detailed day-by-day plan with clear structure.
-    """
+    Format as a detailed day-by-day plan with clear structure and timing."""
     
     prompt_template_variables = {
         "destination": destination,
@@ -259,11 +275,12 @@ def create_itinerary(destination: str, duration: str, research: str, budget_info
     }
     
     with using_prompt_template(
-        template=prompt,
+        template=prompt_template,
         variables=prompt_template_variables,
-        version="1.0",
+        version="itinerary-v1.0",
     ):
-        response = llm.invoke([SystemMessage(content=prompt)])
+        formatted_prompt = prompt_template.format(**prompt_template_variables)
+        response = llm.invoke([SystemMessage(content=formatted_prompt)])
     return response.content
 
 # Define the supervisor node
@@ -272,18 +289,22 @@ def supervisor_node(state: TripPlannerState) -> TripPlannerState:
     
     trip_req = state["trip_request"]
     
-    supervisor_prompt = f"""
-    You are a comprehensive trip planning assistant. Plan a {trip_req['duration']} trip to {trip_req['destination']}.
+    supervisor_prompt_template = """You are a comprehensive trip planning assistant. Plan a {duration} trip to {destination}.
     
     Trip requirements:
-    - Destination: {trip_req['destination']}
-    - Duration: {trip_req['duration']}
-    - Budget: {trip_req.get('budget', 'Flexible')}
-    - Interests: {trip_req.get('interests', 'General sightseeing')}
-    - Travel style: {trip_req.get('travel_style', 'Standard')}
+    - Destination: {destination}
+    - Duration: {duration}
+    - Budget: {budget}
+    - Interests: {interests}
+    - Travel style: {travel_style}
     
-    Use the available tools to plan the trip where necessary.
-    """
+    Use the available tools systematically to plan the trip:
+    1. Research the destination comprehensively
+    2. Analyze budget requirements and cost breakdown
+    3. Curate authentic local experiences
+    4. Create a detailed day-by-day itinerary
+    
+    Ensure you gather comprehensive information before creating the final itinerary."""
     
     prompt_template_variables = {
         "destination": trip_req.get("destination", ""),
@@ -293,7 +314,7 @@ def supervisor_node(state: TripPlannerState) -> TripPlannerState:
         "travel_style": trip_req.get("travel_style", "Standard"),
     }
     
-    messages = [SystemMessage(content=supervisor_prompt)]
+    messages = [SystemMessage(content=supervisor_prompt_template.format(**prompt_template_variables))]
     messages.extend(state.get("messages", []))
     
     # Bind all tools to the LLM
@@ -301,9 +322,9 @@ def supervisor_node(state: TripPlannerState) -> TripPlannerState:
     supervisor_llm = llm.bind_tools(all_tools)
     
     with using_prompt_template(
-        template=supervisor_prompt,
+        template=supervisor_prompt_template,
         variables=prompt_template_variables,
-        version="1.0",
+        version="supervisor-v1.0",
     ):
         response = supervisor_llm.invoke(messages)
     
