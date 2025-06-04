@@ -1,97 +1,159 @@
 # AI Trip Planner
 
-A sophisticated trip planning application powered by CrewAI agents with Arize tracing. This application uses intelligent agent routing to provide specialized travel assistance including destination research, itinerary planning, budget advice, and local recommendations.
+A fast, intelligent trip planning application powered by LangGraph, Groq, and Arize observability.
 
-## Features
+## 🚀 Performance Features
 
-- 🤖 **AI Agent Routing**: Automatically routes requests to specialized travel agents
-- 🔍 **Destination Research**: Weather, attractions, culture, and practical information
-- 📅 **Itinerary Planning**: Detailed day-by-day travel plans
-- 💰 **Budget Advisory**: Cost breakdowns and money-saving tips
-- 🍽️ **Local Experiences**: Authentic restaurants and cultural activities
-- 📊 **Arize Tracing**: Complete observability of agent interactions with Arize
-- 🎨 **Modern UI**: Beautiful Material-UI interface
+- **Groq Integration**: Uses Groq's lightning-fast inference for 10x faster responses
+- **Parallel Processing**: Research, budget analysis, and local experiences run simultaneously
+- **Optimized Graph**: Streamlined workflow eliminates unnecessary supervisor overhead
+- **LiteLLM Instrumentation**: Comprehensive observability and prompt template tracking
+
+## Architecture
+
+### Frontend (React + TypeScript)
+- Modern Material-UI interface
+- Real-time trip planning requests
+- Error handling and loading states
+
+### Backend (FastAPI + LangGraph)
+- **Parallel LangGraph Workflow**: 
+  - Research Node: Destination analysis
+  - Budget Node: Cost breakdown and recommendations  
+  - Local Experiences Node: Authentic recommendations
+  - Itinerary Node: Combines all data into day-by-day plan
+- **Groq LLM**: Fast inference with `llama-3.1-70b-versatile`
+- **Comprehensive Tracing**: LangChain + LiteLLM instrumentation
 
 ## Quick Start
 
-### Prerequisites
+### 1. Setup Environment
 
-- Python 3.8+ with conda/pip
-- Node.js 16+
-- OpenAI API Key
-- Arize Space ID and API Key (get from [app.arize.com](https://app.arize.com))
-
-### 1. Backend Setup (Conda Environment)
+Create a `.env` file in the `backend/` directory:
 
 ```bash
-cd trip_planner/backend
+# Required: Groq API Key (get from https://console.groq.com)
+GROQ_API_KEY=your_groq_api_key_here
 
-# Install dependencies in your conda environment
+# Required: Arize observability (get from https://app.arize.com)
+ARIZE_SPACE_ID=your_arize_space_id
+ARIZE_API_KEY=your_arize_api_key
+
+# Optional: For web search capabilities
+TAVILY_API_KEY=your_tavily_api_key
+
+# Optional: Fallback to OpenAI if Groq unavailable
+OPENAI_API_KEY=your_openai_api_key
+
+# LiteLLM Configuration
+LITELLM_LOG=DEBUG
+```
+
+### 2. Install Dependencies
+
+```bash
+# Backend
+cd backend
 pip install -r requirements.txt
 
-# Create .env file with your API keys
-OPENAI_API_KEY=your_openai_api_key_here
-SERPER_API_KEY=your_serper_api_key_here  # Optional for web search
-ARIZE_SPACE_ID=your_arize_space_id_here
-ARIZE_API_KEY=your_arize_api_key_here
-
-# Start the backend
-python main.py
-```
-
-### 2. Frontend Setup
-
-```bash
-cd trip_planner/frontend
+# Frontend  
+cd ../frontend
 npm install
-npm start
 ```
 
-Visit `http://localhost:3000` to use the application!
-
-## API Usage
+### 3. Run the Application
 
 ```bash
-curl -X POST "http://localhost:8000/plan-trip" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "destination": "Tokyo, Japan",
-    "duration": "7 days",
-    "interests": "food, culture"
-  }'
+# Start both services
+./start.sh
+
+# Or run separately:
+# Backend: cd backend && python main.py
+# Frontend: cd frontend && npm start
 ```
 
-## View Traces
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
 
-Check your agent interactions at: [app.arize.com](https://app.arize.com)
+## Performance Optimizations
 
-## Getting Arize Credentials
+### ⚡ Groq Integration
+- **10x faster inference** compared to OpenAI
+- Uses `llama-3.1-70b-versatile` model for optimal speed/quality balance
+- 30-second timeout with 2000 max tokens
 
-1. Sign up at [app.arize.com](https://app.arize.com)
-2. Create a new space or use an existing one
-3. Go to Space Settings to find your:
-   - **Space ID**: Found in space settings
-   - **API Key**: Generate one in space settings
+### 🔄 Parallel Graph Execution
+- Research, budget, and local experience analysis run **simultaneously**
+- Reduces total execution time from ~30-60 seconds to ~10-15 seconds
+- Final itinerary creation waits for all parallel tasks to complete
 
-## Agent Types
+### 📊 Observability
+- **LangChain + LiteLLM instrumentation** for comprehensive tracing
+- Prompt template tracking with proper variable separation
+- Real-time performance monitoring via Arize platform
 
-The application automatically routes requests to specialized agents:
+## API Endpoints
 
-- **🔍 Research Agent**: "What's the weather in Iceland?"
-- **📅 Itinerary Agent**: "Create a 5-day Rome itinerary"
-- **💰 Budget Agent**: "Budget for Thailand trip"
-- **🍽️ Local Agent**: "Best restaurants in Tokyo"
+### POST `/plan-trip`
+Creates a comprehensive trip plan.
 
-## Docker Deployment
-
-```bash
-cd trip_planner
-docker-compose up
+**Request:**
+```json
+{
+  "destination": "Tokyo, Japan",
+  "duration": "7 days", 
+  "budget": "$2000",
+  "interests": "food, culture, temples",
+  "travel_style": "cultural"
+}
 ```
 
-## Testing
-
-```bash
-cd trip_planner
-python test_api.py
+**Response:**
+```json
+{
+  "result": "# 7-Day Tokyo Cultural Experience\n\n## Day 1: Arrival and Asakusa District..."
+}
 ```
+
+### GET `/health`
+Health check endpoint.
+
+## Development
+
+### Graph Structure
+```
+START → [Research, Budget, Local] → Itinerary → END
+       (parallel execution)
+```
+
+### Key Components
+- `research_node()`: Destination research and weather analysis
+- `budget_node()`: Cost breakdown and money-saving tips  
+- `local_experiences_node()`: Authentic local recommendations
+- `itinerary_node()`: Day-by-day planning with all data
+
+### Prompt Templates
+All tools use comprehensive prompt templates with proper variable tracking:
+- `research-v1.0`: Destination analysis
+- `budget-v1.0`: Cost breakdown  
+- `local-v1.0`: Authentic experiences
+- `itinerary-v1.0`: Day-by-day planning
+
+## Troubleshooting
+
+### Common Issues
+1. **Slow responses**: Ensure you're using Groq API key, not OpenAI
+2. **Empty results**: Check API key configuration in `.env`
+3. **Graph errors**: Verify all dependencies are installed correctly
+
+### Performance Monitoring
+View detailed traces and performance metrics in your Arize dashboard to identify bottlenecks and optimize further.
+
+## Tech Stack
+
+- **Frontend**: React, TypeScript, Material-UI, Axios
+- **Backend**: FastAPI, LangGraph, LangChain, Groq, LiteLLM
+- **Observability**: Arize, OpenInference, OpenTelemetry
+- **Infrastructure**: Docker, Docker Compose
