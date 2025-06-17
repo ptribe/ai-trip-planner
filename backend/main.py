@@ -17,6 +17,7 @@ from openinference.instrumentation.langchain import LangChainInstrumentor
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.instrumentation.litellm import LiteLLMInstrumentor
 from openinference.instrumentation import using_prompt_template
+from opentelemetry import trace  # Add trace context management
 
 # LangGraph and LangChain imports
 from langgraph.graph import StateGraph, END, START
@@ -57,17 +58,20 @@ def setup_tracing():
             project_name="trip-planner"
         )
         
-        # Instrument all relevant components
-        # OpenAI instrumentation (for ChatOpenAI)
-        OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
-        
-        # LangChain instrumentation (for tools and chains)
+        # Only instrument LangChain to avoid duplicate traces
+        # LangChain instrumentation will automatically trace LLM calls within tools
         LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
         
-        # LiteLLM instrumentation (if using LiteLLM directly)
-        LiteLLMInstrumentor().instrument(tracer_provider=tracer_provider)
+        # Disable OpenAI direct instrumentation to prevent duplicate spans
+        # OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
         
-        print("✅ Arize tracing initialized successfully")
+        # Keep LiteLLM instrumentation for direct LiteLLM calls
+        LiteLLMInstrumentor().instrument(
+            tracer_provider=tracer_provider,
+            skip_dep_check=True
+        )
+        
+        print("✅ Arize tracing initialized successfully (LangChain + LiteLLM only)")
         print(f"📊 Project: trip-planner")
         print(f"🔗 Space ID: {space_id[:8]}...")
         
@@ -113,12 +117,11 @@ class TripPlannerState(TypedDict):
     trip_request: Dict[str, Any]
     final_result: Optional[str]
 
-# Initialize the LLM - Using Groq for faster inference
+# Initialize the LLM - Using GPT-4.1 for production
 # Note: This should be initialized after instrumentation setup
 llm = ChatOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=os.getenv("GROQ_API_KEY", os.getenv("OPENAI_API_KEY")),
-    model="llama3-8b-8192",  # Fast and high-quality Groq model
+    api_key=os.getenv("OPENAI_API_KEY"),
+    model="gpt-4o-mini",  # GPT-4o-mini
     temperature=0,
     max_tokens=2000,
     timeout=30
@@ -129,7 +132,7 @@ search_tools = []
 if os.getenv("TAVILY_API_KEY"):
     search_tools.append(TavilySearchResults(max_results=5))
 
-# Define trip planning tools
+# Define trip planning tools with proper trace context
 @tool
 def research_destination(destination: str, duration: str) -> str:
     """Research a destination comprehensively for trip planning.
@@ -138,41 +141,39 @@ def research_destination(destination: str, duration: str) -> str:
         destination: The destination to research
         duration: Duration of the trip
     """
+    # System message for constraints
+    system_prompt = "You are a concise travel researcher. CRITICAL: Your response must be under 150 words and 800 characters. Focus on key facts only."
+    
     # Use search tool if available, otherwise use LLM knowledge
     if search_tools:
         search_tool = search_tools[0]
         search_results = search_tool.invoke(f"{destination} travel guide {duration} trip attractions weather")
         
-        prompt_template = """Based on these search results about {destination}:
-        {search_results}
-        
-        Provide comprehensive destination research for a {duration} trip including:
-        - Weather conditions and best time to visit
-        - Top attractions and activities
-        - Cultural considerations and customs
-        - Transportation options
-        - Safety information
-        - Seasonal factors and considerations
-        - Local customs and etiquette
-        - Essential travel tips"""
+        prompt_template = """Research {destination} for {duration} trip based on: {search_results}
+
+Key info only:
+- Weather/best time
+- Top 3 attractions  
+- Transport options
+- Cultural notes
+- Safety basics"""
         
         prompt_template_variables = {
             "destination": destination,
             "duration": duration,
-            "search_results": str(search_results)
+            "search_results": str(search_results)[:500]  # Limit search results length
         }
     else:
-        prompt_template = """Provide comprehensive destination research for {destination} for a {duration} trip including:
-        - Weather conditions and best time to visit  
-        - Top attractions and activities
-        - Cultural considerations and customs
-        - Transportation options
-        - Safety information
-        - Seasonal factors
-        - Local customs and etiquette
-        - Essential travel tips
-        
-        Note: Using general knowledge as live search is unavailable."""
+        prompt_template = """Research {destination} for {duration} trip.
+
+Key info only:
+- Weather/best time
+- Top 3 attractions
+- Transport options  
+- Cultural notes
+- Safety basics
+
+Note: Using general knowledge."""
         
         prompt_template_variables = {
             "destination": destination,
@@ -182,10 +183,13 @@ def research_destination(destination: str, duration: str) -> str:
     with using_prompt_template(
         template=prompt_template,
         variables=prompt_template_variables,
-        version="research-v1.0",
+        version="research-v2.0",
     ):
         formatted_prompt = prompt_template.format(**prompt_template_variables)
-        response = llm.invoke([SystemMessage(content=formatted_prompt)])
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=formatted_prompt)
+        ])
     return response.content
 
 @tool
@@ -199,19 +203,19 @@ def analyze_budget(destination: str, duration: str, budget: str = None) -> str:
     """
     budget_text = budget or "provide options for different budget levels"
     
-    prompt_template = """Analyze budget requirements for a {duration} trip to {destination}.
-    Target budget: {budget}
+    # Use system message for strict constraints
+    system_prompt = "You are a concise travel budget analyst. CRITICAL: Your response must be under 100 words and 500 characters. No exceptions."
     
-    Include detailed breakdown of:
-    - Accommodation costs (budget, mid-range, luxury options)
-    - Transportation (flights, local transport)
-    - Food and dining expenses
-    - Activities and attraction costs
-    - Miscellaneous expenses
-    - Money-saving tips and strategies
-    - Total estimated costs by budget tier
-    - Seasonal pricing considerations
-    - Value-for-money recommendations"""
+    prompt_template = """Budget for {duration} trip to {destination}. Target: {budget}
+
+Include only:
+- Accommodation range
+- Transport costs  
+- Food budget
+- Activities cost
+- Total estimate
+
+Be extremely concise."""
     
     prompt_template_variables = {
         "destination": destination,
@@ -222,10 +226,13 @@ def analyze_budget(destination: str, duration: str, budget: str = None) -> str:
     with using_prompt_template(
         template=prompt_template,
         variables=prompt_template_variables,
-        version="budget-v1.0",
+        version="budget-v2.0",
     ):
         formatted_prompt = prompt_template.format(**prompt_template_variables)
-        response = llm.invoke([SystemMessage(content=formatted_prompt)])
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=formatted_prompt)
+        ])
     return response.content
 
 @tool
@@ -238,18 +245,19 @@ def curate_local_experiences(destination: str, interests: str = None) -> str:
     """
     interests_text = interests or "general exploration and cultural immersion"
     
-    prompt_template = """Curate authentic local experiences for {destination} focusing on traveler interests: {interests}
+    # System message for constraints
+    system_prompt = "You are a local experience curator. CRITICAL: Your response must be under 100 words and 600 characters. Focus on authentic, specific recommendations only."
     
-    Include recommendations for:
-    - Hidden gem restaurants and authentic cuisine spots (avoid tourist traps)
-    - Cultural activities and local events
-    - Off-the-beaten-path locations and experiences
-    - Traditional markets and unique shopping areas
-    - Community experiences and local interactions
-    - Activities that match the specified interests
-    - Local artisan workshops and craft experiences
-    - Traditional ceremonies or cultural events
-    - Tips for respectful cultural engagement and etiquette"""
+    prompt_template = """Local experiences in {destination} for: {interests}
+
+Recommend only:
+- 2 hidden gem restaurants  
+- 1 cultural activity
+- 1 off-path location
+- 1 local market/workshop
+- Cultural etiquette tip
+
+Be specific and concise."""
     
     prompt_template_variables = {
         "destination": destination,
@@ -259,10 +267,13 @@ def curate_local_experiences(destination: str, interests: str = None) -> str:
     with using_prompt_template(
         template=prompt_template,
         variables=prompt_template_variables,
-        version="local-v1.0",
+        version="local-v2.0",
     ):
         formatted_prompt = prompt_template.format(**prompt_template_variables)
-        response = llm.invoke([SystemMessage(content=formatted_prompt)])
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=formatted_prompt)
+        ])
     return response.content
 
 @tool
@@ -279,49 +290,38 @@ def create_itinerary(destination: str, duration: str, research: str, budget_info
     """
     style_text = travel_style or "Standard"
     
-    prompt_template = """Create a comprehensive day-by-day itinerary for {destination} lasting {duration}.
-    Travel style: {travel_style}
+    # System message for constraints
+    system_prompt = "You are a concise trip planner. CRITICAL: Your response must be under 200 words and 1200 characters. Create day-by-day format with times, activities, and costs only."
     
-    Base the itinerary on this information:
-    
-    DESTINATION RESEARCH:
-    {research}
-    
-    BUDGET ANALYSIS:
-    {budget_info}
-    
-    LOCAL EXPERIENCES:
-    {local_info}
-    
-    Create a balanced itinerary that includes:
-    - Specific daily schedules with timings
-    - Mix of popular attractions and local experiences
-    - Restaurant recommendations for each day
-    - Transportation suggestions between locations
-    - Estimated daily costs and budget considerations
-    - Practical tips and logistical considerations
-    - Backup plans for weather or closure situations
-    - Balance of must-see attractions and leisure time
-    
-    Format as a detailed day-by-day plan with clear structure and timing.
-    EXTREMELY IMPORTANT: DO NOT EXCEED 100 words"""
+    prompt_template = """{duration} itinerary for {destination} ({travel_style} style):
+
+Research: {research}
+Budget: {budget_info}
+Local: {local_info}
+
+Format: Day X: Time - Activity - Cost
+Include top attractions, meals, transport between locations.
+Be concise."""
     
     prompt_template_variables = {
         "destination": destination,
         "duration": duration,
         "travel_style": style_text,
-        "research": research,
-        "budget_info": budget_info,
-        "local_info": local_info
+        "research": research[:200],  # Limit input length
+        "budget_info": budget_info[:200],
+        "local_info": local_info[:200]
     }
     
     with using_prompt_template(
         template=prompt_template,
         variables=prompt_template_variables,
-        version="itinerary-v1.0",
+        version="itinerary-v4.0",
     ):
         formatted_prompt = prompt_template.format(**prompt_template_variables)
-        response = llm.invoke([SystemMessage(content=formatted_prompt)])
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=formatted_prompt)
+        ])
     return response.content
 
 # Enhanced state to track parallel data
