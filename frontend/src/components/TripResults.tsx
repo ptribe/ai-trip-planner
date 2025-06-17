@@ -17,7 +17,8 @@ interface TripResultsProps {
 }
 
 const TripResults: React.FC<TripResultsProps> = ({ response, onNewTrip }) => {
-  const getAgentIcon = (agentType: string) => {
+  const getAgentIcon = (agentType?: string) => {
+    if (!agentType) return '🗺️';
     if (agentType.toLowerCase().includes('research')) return '🔍';
     if (agentType.toLowerCase().includes('itinerary')) return '📅';
     if (agentType.toLowerCase().includes('budget')) return '💰';
@@ -25,7 +26,8 @@ const TripResults: React.FC<TripResultsProps> = ({ response, onNewTrip }) => {
     return '🤖';
   };
 
-  const getRouteColor = (route: string) => {
+  const getRouteColor = (route?: string) => {
+    if (!route) return 'primary';
     switch (route.toLowerCase()) {
       case 'research': return 'info';
       case 'itinerary': return 'success';
@@ -35,20 +37,24 @@ const TripResults: React.FC<TripResultsProps> = ({ response, onNewTrip }) => {
     }
   };
 
+  // Provide default values for missing properties
+  const agentType = response.agent_type || 'Trip Planner';
+  const routeTaken = response.route_taken || 'complete';
+
   return (
     <Box>
       {/* Agent Info Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Typography variant="h6" sx={{ fontSize: '2rem' }}>
-          {getAgentIcon(response.agent_type)}
+          {getAgentIcon(agentType)}
         </Typography>
         <Box sx={{ flexGrow: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {response.agent_type}
+            {agentType}
           </Typography>
           <Chip
-            label={`Route: ${response.route_taken}`}
-            color={getRouteColor(response.route_taken) as any}
+            label={`Route: ${routeTaken}`}
+            color={getRouteColor(routeTaken) as any}
             size="small"
             icon={<Psychology />}
           />

@@ -7,7 +7,7 @@ export interface TripRequest {
 }
 
 export interface TripResponse {
-  agent_type: string;
+  agent_type?: string;
   result: string;
-  route_taken: string;
+  route_taken?: string;
 }

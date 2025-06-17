@@ -6,6 +6,7 @@ arize-otel>=0.8.1
 aiohttp>=3.9.0
 opentelemetry-sdk>=1.21.0
 opentelemetry-exporter-otlp>=1.21.0
+openinference-instrumentation-openai
 openinference-instrumentation-langchain
 langgraph>=0.2.55
 langchain>=0.3.7

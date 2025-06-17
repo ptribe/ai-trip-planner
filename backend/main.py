@@ -14,6 +14,7 @@ load_dotenv()
 # Arize and tracing imports
 from arize.otel import register
 from openinference.instrumentation.langchain import LangChainInstrumentor
+from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.instrumentation.litellm import LiteLLMInstrumentor
 from openinference.instrumentation import using_prompt_template
 
@@ -33,25 +34,54 @@ import litellm
 litellm.set_verbose = True  # Enable debug logging for LiteLLM
 litellm.drop_params = True  # Drop unsupported parameters automatically
 
+# Global tracer provider to ensure it's available across the application
+tracer_provider = None
+
 # Initialize Arize tracing
 def setup_tracing():
+    global tracer_provider
     try:
+        # Check if required environment variables are set
+        space_id = os.getenv("ARIZE_SPACE_ID")
+        api_key = os.getenv("ARIZE_API_KEY")
+        
+        if not space_id or not api_key or space_id == "your_arize_space_id_here" or api_key == "your_arize_api_key_here":
+            print("⚠️ Arize credentials not configured properly.")
+            print("📝 Please set ARIZE_SPACE_ID and ARIZE_API_KEY environment variables.")
+            print("📝 Copy backend/env_example.txt to backend/.env and update with your credentials.")
+            return None
+            
         tracer_provider = register(
-            space_id=os.getenv("ARIZE_SPACE_ID", "your-space-id"),
-            api_key=os.getenv("ARIZE_API_KEY", "your-arize-api-key"),
+            space_id=space_id,
+            api_key=api_key,
             project_name="trip-planner"
         )
-        # Instrument both LangChain and LiteLLM for comprehensive coverage
+        
+        # Instrument all relevant components
+        # OpenAI instrumentation (for ChatOpenAI)
+        OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+        
+        # LangChain instrumentation (for tools and chains)
         LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
+        
+        # LiteLLM instrumentation (if using LiteLLM directly)
         LiteLLMInstrumentor().instrument(tracer_provider=tracer_provider)
+        
         print("✅ Arize tracing initialized successfully")
+        print(f"📊 Project: trip-planner")
+        print(f"🔗 Space ID: {space_id[:8]}...")
+        
+        return tracer_provider
+        
     except Exception as e:
         print(f"⚠️ Arize tracing setup failed: {str(e)}")
         print("📝 Continuing without tracing - check your ARIZE_SPACE_ID and ARIZE_API_KEY")
-        # Continue without tracing rather than failing completely
+        print("📝 Also ensure you have the latest version of openinference packages")
+        return None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Setup tracing before anything else
     setup_tracing()
     yield
 
@@ -84,6 +114,7 @@ class TripPlannerState(TypedDict):
     final_result: Optional[str]
 
 # Initialize the LLM - Using Groq for faster inference
+# Note: This should be initialized after instrumentation setup
 llm = ChatOpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=os.getenv("GROQ_API_KEY", os.getenv("OPENAI_API_KEY")),
@@ -272,7 +303,8 @@ def create_itinerary(destination: str, duration: str, research: str, budget_info
     - Backup plans for weather or closure situations
     - Balance of must-see attractions and leisure time
     
-    Format as a detailed day-by-day plan with clear structure and timing."""
+    Format as a detailed day-by-day plan with clear structure and timing.
+    EXTREMELY IMPORTANT: DO NOT EXCEED 100 words"""
     
     prompt_template_variables = {
         "destination": destination,
