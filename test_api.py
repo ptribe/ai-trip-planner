@@ -115,7 +115,6 @@ def main():
             time.sleep(5)
 
     print("🎉 Testing completed!")
-    print("\n📊 Check your Phoenix dashboard for traces: https://app.phoenix.arize.com/")
 
 if __name__ == "__main__":
     main()

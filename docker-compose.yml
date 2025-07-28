@@ -10,9 +10,8 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SERPER_API_KEY=${SERPER_API_KEY}
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY}
-      - PHOENIX_CLIENT_HEADERS=api_key=${PHOENIX_API_KEY}
-      - PHOENIX_COLLECTOR_ENDPOINT=https://app.phoenix.arize.com/
+      - ARIZE_SPACE_ID=${ARIZE_SPACE_ID}
+      - ARIZE_API_KEY=${ARIZE_API_KEY}
     volumes:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload

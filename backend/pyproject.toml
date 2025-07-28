@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "trip-planner-backend"
 version = "1.0.0"
-description = "AI-powered trip planning backend using CrewAI agents"
+description = "AI-powered trip planning backend using LangGraph with Arize observability"
 authors = [{name = "Trip Planner Team"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -25,12 +25,16 @@ dependencies = [
     "uvicorn[standard]==0.24.0",
     "pydantic==2.5.0",
     "python-multipart==0.0.6",
-    "arize-phoenix==4.0.0",
-    "opentelemetry-sdk==1.21.0",
-    "opentelemetry-exporter-otlp==1.21.0",
-    "crewai==0.41.1",
-    "crewai-tools==0.8.3",
-    "openinference-instrumentation-crewai==0.1.12",
+    "arize-otel>=0.8.1",
+    "opentelemetry-sdk>=1.21.0",
+    "opentelemetry-exporter-otlp>=1.21.0",
+    "openinference-instrumentation-langchain>=0.1.19",
+    "openinference-instrumentation-litellm>=0.1.0",
+    "langgraph>=0.2.55",
+    "langchain>=0.3.7",
+    "langchain-openai>=0.2.10",
+    "langchain-community>=0.3.5",
+    "litellm",
     "python-dotenv==1.0.0",
 ]
 
