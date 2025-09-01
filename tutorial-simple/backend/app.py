@@ -278,7 +278,7 @@ def build_graph():
     return g.compile(checkpointer=MemorySaver())
 
 
-app = FastAPI(title="AI Trip Planner (Tutorial Simple)")
+app = FastAPI(title="AI Trip Planner")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -294,12 +294,12 @@ def serve_frontend():
     path = os.path.join(here, "..", "frontend", "index.html")
     if os.path.exists(path):
         return FileResponse(path)
-    return {"message": "tutorial-simple/frontend/index.html not found"}
+    return {"message": "frontend/index.html not found"}
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "tutorial-simple"}
+    return {"status": "healthy", "service": "ai-trip-planner"}
 
 
 @app.post("/plan-trip", response_model=TripResponse)
@@ -309,7 +309,7 @@ def plan_trip(req: TripRequest):
             space_id = os.getenv("ARIZE_SPACE_ID")
             api_key = os.getenv("ARIZE_API_KEY")
             if space_id and api_key:
-                tp = register(space_id=space_id, api_key=api_key, project_name="tutorial-simple")
+                tp = register(space_id=space_id, api_key=api_key, project_name="ai-trip-planner")
                 LangChainInstrumentor().instrument(tracer_provider=tp, include_chains=True, include_agents=True, include_tools=True)
                 LiteLLMInstrumentor().instrument(tracer_provider=tp, skip_dep_check=True)
         except Exception:
@@ -332,4 +332,4 @@ def plan_trip(req: TripRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
