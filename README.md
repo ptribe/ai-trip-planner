@@ -168,7 +168,7 @@ npm install
 ./start.sh
 
 # Or run separately:
-# Backend (canonical): cd backend && python main_with_tools_fixed.py
+# Backend (canonical): cd backend && python main.py
 # Frontend: cd frontend && npm start
 ```
 
