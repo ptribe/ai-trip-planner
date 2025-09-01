@@ -1,5 +1,5 @@
 """
-Airtable Integration for AI Trip Planner
+Airtable Integration for AI Trip Planner (moved to optional/airtable)
 Captures traces for manual labeling and evaluation
 """
 
