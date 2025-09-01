@@ -247,7 +247,7 @@ START → Research → Budget → Local Experiences → Itinerary → END
 Use the focused generator to provoke bad tool calls and detect tone issues for frustrated users:
 
 ```bash
-python generate_bad_tool_calls.py \
+python synthetic_data_gen.py \
   --base-url http://localhost:8000 \
   --count 20 \
   --outfile synthetic_bad_tool_calls.json
