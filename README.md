@@ -14,7 +14,10 @@ Fast, sequential trip planning with FastAPI (backend), React (frontend), and Lan
 
 3) Install dependencies
 ```bash
-cd backend && pip install -r requirements.txt
+cd backend
+uv pip install -r requirements.txt   # faster, deterministic installs
+# If uv is not installed: curl -LsSf https://astral.sh/uv/install.sh | sh
+# Fallback: pip install -r requirements.txt
 ```
 
 4) Run
