@@ -2,12 +2,12 @@
 
 A fast, intelligent trip planning application powered by LangGraph and Groq with comprehensive Arize observability.
 
-## 🚀 Performance Features
+## 🚀 Performance & Observability
 
-- **Groq Integration**: Uses Groq's lightning-fast inference for 10x faster responses
-- **Parallel Processing**: Research, budget analysis, and local experiences run simultaneously
-- **Optimized Graph**: Streamlined workflow eliminates unnecessary supervisor overhead
-- **Arize Observability**: Comprehensive tracing and monitoring of LangGraph agents
+- **LLM Providers**: Works with OpenAI or Groq (choose via env)
+- **Clear Tracing**: Chain/agent/tool spans visible in Arize
+- **Prompt Metadata**: Templates + variables logged on LLM spans (using `using_prompt_template`)
+- **Deterministic Flow**: Sequential orchestration for reliable data handoff between agents
 
 ## Architecture
 
@@ -17,13 +17,10 @@ A fast, intelligent trip planning application powered by LangGraph and Groq with
 - Error handling and loading states
 
 ### Backend (FastAPI + LangGraph)
-- **Parallel LangGraph Workflow**: 
-  - Research Node: Destination analysis
-  - Budget Node: Cost breakdown and recommendations  
-  - Local Experiences Node: Authentic recommendations
-  - Itinerary Node: Combines all data into day-by-day plan
-- **Groq LLM**: Fast inference with `llama-3.1-70b-versatile`
-- **Arize Tracing**: Complete observability with OpenInference instrumentation
+- **Sequential Workflow**:
+  - Research agent → Budget agent → Local Experiences agent → Itinerary synthesis
+- **Single LLM per helper**: Helpers make one LLM call to choose tools; synthesis happens in itinerary
+- **Arize Tracing**: OpenInference auto-instrumentation; prompt templates recorded on LLM spans
 
 ## 📊 Observability with Arize
 
@@ -51,7 +48,7 @@ This application includes comprehensive tracing using Arize, allowing you to:
 3. **View Traces**:
    - Run your application
    - Navigate to [https://app.arize.com](https://app.arize.com)
-   - Select your project "ai-trip-planner"
+   - Select your project (e.g., "ai-trip-planner")
    - View real-time traces of your agent execution
 
 ## 📋 Data Labeling with Airtable
@@ -171,7 +168,7 @@ npm install
 ./start.sh
 
 # Or run separately:
-# Backend: cd backend && python main.py
+# Backend (canonical): cd backend && python main_with_tools_fixed.py
 # Frontend: cd frontend && npm start
 ```
 
@@ -188,10 +185,9 @@ The application will be available at:
 - Uses `llama-3.1-70b-versatile` model for optimal speed/quality balance
 - 30-second timeout with 2000 max tokens
 
-### 🔄 Parallel Graph Execution
-- Research, budget, and local experience analysis run **simultaneously**
-- Reduces total execution time from ~30-60 seconds to ~10-15 seconds
-- Final itinerary creation waits for all parallel tasks to complete
+### 🔄 Orchestration
+- Sequential agent execution (research → budget → local → itinerary)
+- Ensures itinerary has complete upstream context
 
 ### 📊 Arize Observability Features
 - **LangGraph Instrumentation**: Automatic tracing of all graph nodes and edges
@@ -230,8 +226,7 @@ Health check endpoint.
 
 ### Graph Structure
 ```
-START → [Research, Budget, Local] → Itinerary → END
-       (parallel execution)
+START → Research → Budget → Local Experiences → Itinerary → END
 ```
 
 ### Key Components
@@ -241,18 +236,26 @@ START → [Research, Budget, Local] → Itinerary → END
 - `itinerary_node()`: Day-by-day planning with all data
 
 ### Prompt Templates
-All tools use comprehensive prompt templates with version tracking:
-- `research-v1.0`: Destination analysis template
-- `budget-v1.0`: Cost breakdown template
-- `local-v1.0`: Authentic experiences template
-- `itinerary-v1.0`: Day-by-day planning template
+- Templates and variables are attached to LLM spans via `using_prompt_template`.
+- Each agent uses a versioned template (e.g., `v1`).
 
 ### Tracing Spans
-Each node creates its own span with relevant attributes:
-- **research_node**: destination, duration
-- **budget_node**: destination, duration, budget
-- **local_experiences_node**: destination, interests
-- **itinerary_node**: destination, duration, travel_style
+- Chain/agent/tool spans from LangChain/LiteLLM; LLM spans include prompt metadata.
+
+## Synthetic Evals (Bad Tools & Tone)
+
+Use the focused generator to provoke bad tool calls and detect tone issues for frustrated users:
+
+```bash
+python generate_bad_tool_calls.py \
+  --base-url http://localhost:8000 \
+  --count 20 \
+  --outfile synthetic_bad_tool_calls.json
+```
+
+The JSON report includes:
+- `eval_tools`: wrong tools used, missing recommended tools
+- `eval_tone`: `tone_off` flag with reasons (empathy, acknowledgement, cheerfulness, dismissiveness)
 
 ## Troubleshooting
 
