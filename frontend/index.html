@@ -1,66 +1,567 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI Trip Planner</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; margin: 2rem; }
-      .card { max-width: 720px; margin: 0 auto; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }
-      label { display:block; font-weight:600; margin:.5rem 0; }
-      input, select { width:100%; padding:.6rem .8rem; border:1px solid #e5e7eb; border-radius:8px; }
-      button { margin-top: 1rem; padding:.7rem 1rem; background:#4F46E5; color:#fff; border:none; border-radius:8px; cursor:pointer; }
-      .status { margin-top:1rem; }
-      .result { margin-top:1rem; padding:1rem; background:#f9fafb; border-radius:8px; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h2>AI Trip Planner</h2>
-      <label>Destination</label>
-      <input id="destination" placeholder="Tokyo" />
-      <label>Duration</label>
-      <input id="duration" placeholder="3 days" />
-      <label>Budget</label>
-      <select id="budget">
-        <option value="budget">budget</option>
-        <option value="moderate" selected>moderate</option>
-        <option value="luxury">luxury</option>
-      </select>
-      <label>Interests</label>
-      <input id="interests" placeholder="food, culture" value="food, culture" />
-      <label>Travel style</label>
-      <input id="travel_style" placeholder="standard" value="standard" />
-      <button onclick="plan()">Plan Trip</button>
-      <div id="status" class="status"></div>
-      <div id="result" class="result" style="display:none"></div>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plan Your Perfect Trip</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-neutral-50 text-neutral-900 antialiased font-[Inter]">
+  <!-- Nav -->
+  <header class="border-b border-neutral-200 bg-white/80 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
+          <i data-lucide="compass" class="h-5 w-5"></i>
+        </span>
+        <span class="text-lg font-semibold tracking-tight">Trip Planner</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="mx-auto max-w-7xl px-6 pt-10 pb-8">
+    <div class="relative overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-600">
+      <div class="absolute inset-0 opacity-20">
+        <img alt="Mountain landscape" class="h-full w-full object-cover"
+             src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2000&auto=format&fit=crop" />
+      </div>
+      <div class="relative grid gap-6 p-8 md:grid-cols-3 md:p-12">
+        <div class="md:col-span-2">
+          <h1 class="text-white text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+            Plan Your Perfect Trip
+          </h1>
+          <p class="mt-3 text-indigo-100/90 text-base md:text-lg">
+            Discover destinations, craft smart budgets, and get a personalized day-by-day itinerary in seconds.
+          </p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="clock-8" class="h-4 w-4"></i>
+              Plan faster
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="map" class="h-4 w-4"></i>
+              Smarter routes
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="sparkles" class="h-4 w-4"></i>
+              Local gems
+            </div>
+          </div>
+        </div>
+        <div class="hidden md:block">
+          <div class="relative h-full w-full rounded-xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur">
+            <img alt="City minimal render" class="h-full w-full rounded-lg object-cover"
+                 src="https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1600&auto=format&fit=crop" />
+            <div class="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-black/30 px-3 py-1.5 text-white text-xs">
+              <i data-lucide="camera" class="h-3.5 w-3.5"></i> Inspiration
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-      async function plan() {
-        const status = document.getElementById('status');
-        const result = document.getElementById('result');
-        status.textContent = 'Planning...';
-        result.style.display = 'none';
+    <!-- Feature cards -->
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+            <i data-lucide="search" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Research</div>
+            <p class="text-sm text-neutral-600">Weather, highlights, neighborhoods.</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+            <i data-lucide="calendar-clock" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Itineraries</div>
+            <p class="text-sm text-neutral-600">Day-by-day schedules, in minutes.</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+            <i data-lucide="wallet" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Budget</div>
+            <p class="text-sm text-neutral-600">Smart spend suggestions.</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+            <i data-lucide="map-pin" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Local</div>
+            <p class="text-sm text-neutral-600">Authentic finds & hidden gems.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        const body = {
-          destination: document.getElementById('destination').value || 'Tokyo',
-          duration: document.getElementById('duration').value || '3 days',
-          budget: document.getElementById('budget').value || 'moderate',
-          interests: document.getElementById('interests').value || 'food, culture',
-          travel_style: document.getElementById('travel_style').value || 'standard',
-        };
-        try {
-          const r = await fetch('/plan-trip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-          const data = await r.json();
-          status.textContent = '';
-          result.innerHTML = marked.parse(data.result || 'No result');
-          result.style.display = 'block';
-        } catch (e) {
-          status.textContent = 'Error connecting to backend';
-        }
+  <!-- Planner -->
+  <main class="mx-auto max-w-7xl px-6 pb-20">
+    <div class="grid gap-6 lg:grid-cols-3">
+      <!-- Form -->
+      <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <h2 class="text-2xl font-semibold tracking-tight">Plan Your Trip</h2>
+        <p class="mt-1 text-sm text-neutral-600">Enter a destination, number of days, budget, and interests.</p>
+
+        <form id="plannerForm" class="mt-6 space-y-4" autocomplete="off">
+          <!-- Destination -->
+          <div>
+            <label for="destination" class="block text-sm font-medium text-neutral-800">Destination</label>
+            <div class="mt-2 relative">
+              <input id="destination" type="text" required placeholder="e.g., Kyoto, Japan"
+                     class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-neutral-900 placeholder-neutral-400 shadow-sm outline-none ring-0 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                <i data-lucide="map-pin" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Duration -->
+          <div>
+            <label for="duration" class="block text-sm font-medium text-neutral-800">Duration (days)</label>
+            <div class="mt-2 relative">
+              <input id="duration" type="number" inputmode="numeric" min="1" max="30" step="1" required placeholder="e.g., 5"
+                     class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-neutral-900 placeholder-neutral-400 shadow-sm outline-none ring-0 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                <i data-lucide="calendar" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Budget (custom select) -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-neutral-800">Budget</label>
+            <input id="budgetValue" type="hidden" value="moderate" />
+            <button id="budgetBtn" type="button"
+                    class="mt-2 w-full inline-flex items-center justify-between rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-left text-neutral-900 shadow-sm hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-200">
+              <span id="budgetLabel">Moderate</span>
+              <i data-lucide="chevron-down" class="h-4.5 w-4.5 text-neutral-500"></i>
+            </button>
+            <div id="budgetMenu" class="absolute z-20 mt-2 hidden w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+              <button data-value="budget" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-neutral-50">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="piggy-bank" class="h-4 w-4 text-neutral-500"></i>
+                  Budget
+                </span>
+                <span class="text-neutral-500 text-xs">Save more</span>
+              </button>
+              <button data-value="moderate" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-neutral-50">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="wallet" class="h-4 w-4 text-neutral-500"></i>
+                  Moderate
+                </span>
+                <span class="text-neutral-500 text-xs">Balanced</span>
+              </button>
+              <button data-value="luxury" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-neutral-50">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="gem" class="h-4 w-4 text-neutral-500"></i>
+                  Luxury
+                </span>
+                <span class="text-neutral-500 text-xs">Premium</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Interests -->
+          <div>
+            <label for="interests" class="block text-sm font-medium text-neutral-800">Interests</label>
+            <div class="mt-2 relative">
+              <input id="interests" type="text" placeholder="e.g., food, culture, museums, nightlife"
+                     class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-neutral-900 placeholder-neutral-400 shadow-sm outline-none ring-0 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                <i data-lucide="sparkles" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="pt-2">
+            <button type="submit"
+                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-white shadow-sm transition hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-300">
+              <i data-lucide="route" class="h-5 w-5"></i>
+              <span class="font-medium">Plan My Trip</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Output -->
+      <section class="lg:col-span-2 space-y-6">
+        <div id="placeholderCard" class="rounded-xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
+          <h3 class="text-xl md:text-2xl font-semibold tracking-tight">Fill out the form to get your personalized trip plan</h3>
+          <p class="mt-2 text-neutral-600">Enter your details on the left—your itinerary will appear here.</p>
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-lg border border-neutral-200 p-4">
+              <div class="flex items-center gap-2 text-neutral-700">
+                <i data-lucide="sunrise" class="h-4 w-4"></i>
+                Morning ideas
+              </div>
+              <p class="mt-1 text-sm text-neutral-600">Neighborhood walk, cafe, must-see spot.</p>
+            </div>
+            <div class="rounded-lg border border-neutral-200 p-4">
+              <div class="flex items-center gap-2 text-neutral-700">
+                <i data-lucide="utensils" class="h-4 w-4"></i>
+                Food moments
+              </div>
+              <p class="mt-1 text-sm text-neutral-600">Street food to chef-led tastings.</p>
+            </div>
+            <div class="rounded-lg border border-neutral-200 p-4">
+              <div class="flex items-center gap-2 text-neutral-700">
+                <i data-lucide="moon" class="h-4 w-4"></i>
+                Evenings
+              </div>
+              <p class="mt-1 text-sm text-neutral-600">Sunsets, shows, speakeasies.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="results" class="hidden space-y-6"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-neutral-200 bg-white">
+    <div class="mx-auto max-w-7xl px-6 py-10 text-sm text-neutral-600">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white">
+            <i data-lucide="compass" class="h-4.5 w-4.5"></i>
+          </span>
+          <span>&copy; <span id="year"></span> Trip Planner</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <a class="hover:text-neutral-900" href="#">Privacy</a>
+          <a class="hover:text-neutral-900" href="#">Terms</a>
+          <a class="hover:text-neutral-900" href="#">Support</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize icons and year
+    function renderIcons() { if (window.lucide) lucide.createIcons(); }
+    document.getElementById('year').textContent = new Date().getFullYear();
+    renderIcons();
+
+    // Custom budget select
+    const budgetBtn = document.getElementById('budgetBtn');
+    const budgetMenu = document.getElementById('budgetMenu');
+    const budgetLabel = document.getElementById('budgetLabel');
+    const budgetValue = document.getElementById('budgetValue');
+
+    budgetBtn.addEventListener('click', () => {
+      budgetMenu.classList.toggle('hidden');
+    });
+
+    budgetMenu.querySelectorAll('button[data-value]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-value');
+        budgetValue.value = val;
+        budgetLabel.textContent = btn.innerText.trim().split('\n')[0];
+        budgetMenu.classList.add('hidden');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!budgetBtn.contains(e.target) && !budgetMenu.contains(e.target)) {
+        budgetMenu.classList.add('hidden');
       }
-    </script>
-  </body>
+    });
+
+    // Planner logic
+    const form = document.getElementById('plannerForm');
+    const results = document.getElementById('results');
+    const placeholderCard = document.getElementById('placeholderCard');
+
+    const baseIdeas = {
+      general: {
+        morning: [
+          "Neighborhood walk and coffee at a beloved cafe",
+          "Explore the historic center and main square",
+          "Visit a landmark viewpoint for panoramic photos"
+        ],
+        afternoon: [
+          "Museum or gallery with a curated collection",
+          "Local market stroll and tastings",
+          "Riverside or park bike rental"
+        ],
+        evening: [
+          "Sunset spot and golden-hour photos",
+          "Dinner at a well-rated local restaurant",
+          "Night walk through a lively district"
+        ]
+      },
+      food: {
+        morning: [
+          "Bakery crawl for regional pastries",
+          "Farmers' market breakfast"
+        ],
+        afternoon: [
+          "Street-food tour with 3–4 stops",
+          "Hands-on cooking class"
+        ],
+        evening: [
+          "Chef's tasting menu or izakaya hop",
+          "Dessert bar or gelato stroll"
+        ]
+      },
+      culture: {
+        morning: [
+          "Guided visit to a temple, church, or heritage site",
+          "Architecture walk with audio notes"
+        ],
+        afternoon: [
+          "Design or history museum",
+          "Traditional craft studio visit"
+        ],
+        evening: [
+          "Theater, concert, or folk performance",
+          "Old-town night illumination walk"
+        ]
+      },
+      nature: {
+        morning: [
+          "Easy hike or lakeside walk",
+          "Botanical garden visit"
+        ],
+        afternoon: [
+          "Scenic train or cable car ride",
+          "Boat cruise with viewpoints"
+        ],
+        evening: [
+          "Picnic at a park for sunset",
+          "Stargazing spot away from city lights"
+        ]
+      },
+      nightlife: {
+        morning: [
+          "Late brunch at a trendy spot"
+        ],
+        afternoon: [
+          "Coffee roastery tour and tasting"
+        ],
+        evening: [
+          "Cocktail bar crawl and live DJ",
+          "Rooftop lounge with skyline views"
+        ]
+      },
+      shopping: {
+        morning: ["Vintage and indie boutiques"],
+        afternoon: ["Design district and concept stores"],
+        evening: ["Night market browsing"]
+      },
+      adventure: {
+        morning: ["Kayak or SUP session"],
+        afternoon: ["Zipline, ATV, or canyon tour"],
+        evening: ["Relaxing soak or spa after activities"]
+      },
+      relaxation: {
+        morning: ["Slow cafe morning and journaling"],
+        afternoon: ["Spa/onsen or beach time"],
+        evening: ["Quiet wine bar or tea house"]
+      },
+      history: {
+        morning: ["Old fortress or castle tour"],
+        afternoon: ["Archaeological site and museum"],
+        evening: ["Storytelling walk with a guide"]
+      },
+      art: {
+        morning: ["Contemporary gallery circuit"],
+        afternoon: ["Studio workshop or street art tour"],
+        evening: ["Openings or art cinema screening"]
+      },
+      beach: {
+        morning: ["Sunrise shoreline walk"],
+        afternoon: ["Snorkel or sailing excursion"],
+        evening: ["Seafood dinner by the water"]
+      }
+    };
+
+    const budgetOverlays = {
+      budget: {
+        morning: ["Free walking route and photo spots"],
+        afternoon: ["Public transit day pass; free museum day"],
+        evening: ["Casual eats and local beer garden"]
+      },
+      moderate: {
+        morning: ["Barista-led coffee tasting"],
+        afternoon: ["Skip-the-line tickets to a highlight"],
+        evening: ["Mid-range bistro or tapas crawl"]
+      },
+      luxury: {
+        morning: ["Private guide for iconic sites"],
+        afternoon: ["Driver for scenic loop or winery tour"],
+        evening: ["Fine dining reservation and nightcaps"]
+      }
+    };
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function buildDayPlan(preferences, budgetKey) {
+      const blocks = ["morning", "afternoon", "evening"];
+      const plan = {};
+      blocks.forEach(block => {
+        let options = [...(baseIdeas.general[block] || [])];
+        preferences.forEach(p => {
+          if (baseIdeas[p] && baseIdeas[p][block]) {
+            options = options.concat(baseIdeas[p][block]);
+          }
+        });
+        options = options.concat(budgetOverlays[budgetKey][block] || []);
+        plan[block] = pick(options);
+      });
+      return plan;
+    }
+
+    function pill(content) {
+      return `<span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700">
+        <i data-lucide="tag" class="h-3.5 w-3.5"></i>${content}
+      </span>`;
+    }
+
+    function titleCase(str) {
+      return str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+    }
+
+    function buildHeaderCard({ destination, duration, budget, interests }) {
+      const interestPills = interests.length
+        ? interests.slice(0, 6).map(i => pill(titleCase(i))).join(" ")
+        : pill("Flexible");
+
+      const heroImg = `https://source.unsplash.com/1600x900/?${encodeURIComponent(destination)},city`;
+
+      return `
+        <div class="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+          <div class="grid md:grid-cols-2">
+            <div class="p-6">
+              <div class="flex items-center justify-between">
+                <h3 class="text-2xl font-semibold tracking-tight">${titleCase(destination)}</h3>
+                <span class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm text-neutral-700">
+                  <i data-lucide="calendar" class="h-4 w-4"></i>${duration} day${duration > 1 ? "s" : ""}
+                </span>
+              </div>
+              <p class="mt-2 text-neutral-600">Your personalized itinerary is ready. Tweak interests and regenerate anytime.</p>
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-2.5 py-1 text-xs text-white">
+                  <i data-lucide="wallet" class="h-3.5 w-3.5"></i>${titleCase(budget)}
+                </span>
+                ${interestPills}
+              </div>
+              <div class="mt-5 flex flex-wrap gap-3">
+                <button id="printBtn" class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm hover:bg-neutral-50">
+                  <i data-lucide="printer" class="h-4 w-4"></i>Print / PDF
+                </button>
+                <a class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm hover:bg-neutral-50"
+                   href="https://www.google.com/search?q=${encodeURIComponent(destination)}%20top%20sights" target="_blank" rel="noopener">
+                  <i data-lucide="external-link" class="h-4 w-4"></i>Research more
+                </a>
+              </div>
+            </div>
+            <div class="relative">
+              <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=1080&q=80" alt="${titleCase(destination)}" class="h-full w-full object-cover"/>
+              <div class="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-white text-xs">
+                <i data-lucide="image" class="h-3.5 w-3.5"></i> Photo inspiration
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildDayCard(dayNum, plan) {
+      const icons = { morning: "sunrise", afternoon: "sun", evening: "moon" };
+      const captions = { morning: "Morning", afternoon: "Afternoon", evening: "Evening" };
+      return `
+        <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="text-lg font-semibold tracking-tight">Day ${dayNum}</h4>
+            <span class="text-sm text-neutral-600">Balanced pace</span>
+          </div>
+          <div class="divide-y divide-neutral-200">
+            ${Object.keys(plan).map(key => `
+              <div class="py-3 flex items-start gap-3">
+                <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                  <i data-lucide="${icons[key]}" class="h-4.5 w-4.5"></i>
+                </span>
+                <div>
+                  <div class="text-sm font-medium">${captions[key]}</div>
+                  <p class="text-sm text-neutral-700 mt-0.5">${plan[key]}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function generateItinerary(e) {
+      e?.preventDefault();
+
+      const destination = (document.getElementById('destination').value || "").trim();
+      const duration = Math.max(1, Math.min(30, parseInt(document.getElementById('duration').value || "0", 10)));
+      const budget = document.getElementById('budgetValue').value || "moderate";
+      const interestsRaw = (document.getElementById('interests').value || "").toLowerCase();
+      const interests = interestsRaw.split(/[,/]| and | & |\n/gi)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+
+      if (!destination || !duration) {
+        alert("Please enter a destination and duration.");
+        return;
+      }
+
+      placeholderCard.classList.add('hidden');
+      results.classList.remove('hidden');
+      results.innerHTML = `
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <div class="flex items-center gap-3 text-neutral-700">
+            <i data-lucide="loader-2" class="h-5 w-5 animate-spin"></i>
+            Generating your itinerary...
+          </div>
+        </div>
+      `;
+      renderIcons();
+
+      // Simulate quick planning
+      setTimeout(() => {
+        const prefs = interests.filter(k => baseIdeas[k]);
+        const header = buildHeaderCard({ destination, duration, budget, interests });
+        const days = [];
+        for (let i = 1; i <= duration; i++) {
+          const plan = buildDayPlan(prefs, budget);
+          days.push(buildDayCard(i, plan));
+        }
+        results.innerHTML = header + days.join("");
+
+        renderIcons();
+
+        // Print
+        const printBtn = document.getElementById('printBtn');
+        printBtn?.addEventListener('click', () => window.print());
+      }, 500);
+    }
+
+    form.addEventListener('submit', generateItinerary);
+  </script>
+</body>
 </html>
