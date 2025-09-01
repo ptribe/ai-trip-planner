@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tutorial Simple Trip Planner</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; margin: 2rem; }
+      .card { max-width: 720px; margin: 0 auto; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }
+      label { display:block; font-weight:600; margin:.5rem 0; }
+      input, select { width:100%; padding:.6rem .8rem; border:1px solid #e5e7eb; border-radius:8px; }
+      button { margin-top: 1rem; padding:.7rem 1rem; background:#4F46E5; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+      .status { margin-top:1rem; }
+      .result { margin-top:1rem; padding:1rem; background:#f9fafb; border-radius:8px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>AI Trip Planner (Tutorial Simple)</h2>
+      <label>Destination</label>
+      <input id="destination" placeholder="Tokyo" />
+      <label>Duration</label>
+      <input id="duration" placeholder="3 days" />
+      <label>Budget</label>
+      <select id="budget">
+        <option value="budget">budget</option>
+        <option value="moderate" selected>moderate</option>
+        <option value="luxury">luxury</option>
+      </select>
+      <label>Interests</label>
+      <input id="interests" placeholder="food, culture" value="food, culture" />
+      <label>Travel style</label>
+      <input id="travel_style" placeholder="standard" value="standard" />
+      <button onclick="plan()">Plan Trip</button>
+      <div id="status" class="status"></div>
+      <div id="result" class="result" style="display:none"></div>
+    </div>
+
+    <script>
+      async function plan() {
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+        status.textContent = 'Planning...';
+        result.style.display = 'none';
+
+        const body = {
+          destination: document.getElementById('destination').value || 'Tokyo',
+          duration: document.getElementById('duration').value || '3 days',
+          budget: document.getElementById('budget').value || 'moderate',
+          interests: document.getElementById('interests').value || 'food, culture',
+          travel_style: document.getElementById('travel_style').value || 'standard',
+        };
+        try {
+          const r = await fetch('/plan-trip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+          const data = await r.json();
+          status.textContent = '';
+          result.innerHTML = marked.parse(data.result || 'No result');
+          result.style.display = 'block';
+        } catch (e) {
+          status.textContent = 'Error connecting to backend';
+        }
+      }
+    </script>
+  </body>
+</html>
+
