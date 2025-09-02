@@ -256,6 +256,7 @@
     </div>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     // Initialize icons and year
     function renderIcons() { if (window.lucide) lucide.createIcons(); }
@@ -287,246 +288,22 @@
       }
     });
 
-    // Planner logic
+    // Planner logic (calls backend)
     const form = document.getElementById('plannerForm');
     const results = document.getElementById('results');
     const placeholderCard = document.getElementById('placeholderCard');
 
-    const baseIdeas = {
-      general: {
-        morning: [
-          "Neighborhood walk and coffee at a beloved cafe",
-          "Explore the historic center and main square",
-          "Visit a landmark viewpoint for panoramic photos"
-        ],
-        afternoon: [
-          "Museum or gallery with a curated collection",
-          "Local market stroll and tastings",
-          "Riverside or park bike rental"
-        ],
-        evening: [
-          "Sunset spot and golden-hour photos",
-          "Dinner at a well-rated local restaurant",
-          "Night walk through a lively district"
-        ]
-      },
-      food: {
-        morning: [
-          "Bakery crawl for regional pastries",
-          "Farmers' market breakfast"
-        ],
-        afternoon: [
-          "Street-food tour with 3–4 stops",
-          "Hands-on cooking class"
-        ],
-        evening: [
-          "Chef's tasting menu or izakaya hop",
-          "Dessert bar or gelato stroll"
-        ]
-      },
-      culture: {
-        morning: [
-          "Guided visit to a temple, church, or heritage site",
-          "Architecture walk with audio notes"
-        ],
-        afternoon: [
-          "Design or history museum",
-          "Traditional craft studio visit"
-        ],
-        evening: [
-          "Theater, concert, or folk performance",
-          "Old-town night illumination walk"
-        ]
-      },
-      nature: {
-        morning: [
-          "Easy hike or lakeside walk",
-          "Botanical garden visit"
-        ],
-        afternoon: [
-          "Scenic train or cable car ride",
-          "Boat cruise with viewpoints"
-        ],
-        evening: [
-          "Picnic at a park for sunset",
-          "Stargazing spot away from city lights"
-        ]
-      },
-      nightlife: {
-        morning: [
-          "Late brunch at a trendy spot"
-        ],
-        afternoon: [
-          "Coffee roastery tour and tasting"
-        ],
-        evening: [
-          "Cocktail bar crawl and live DJ",
-          "Rooftop lounge with skyline views"
-        ]
-      },
-      shopping: {
-        morning: ["Vintage and indie boutiques"],
-        afternoon: ["Design district and concept stores"],
-        evening: ["Night market browsing"]
-      },
-      adventure: {
-        morning: ["Kayak or SUP session"],
-        afternoon: ["Zipline, ATV, or canyon tour"],
-        evening: ["Relaxing soak or spa after activities"]
-      },
-      relaxation: {
-        morning: ["Slow cafe morning and journaling"],
-        afternoon: ["Spa/onsen or beach time"],
-        evening: ["Quiet wine bar or tea house"]
-      },
-      history: {
-        morning: ["Old fortress or castle tour"],
-        afternoon: ["Archaeological site and museum"],
-        evening: ["Storytelling walk with a guide"]
-      },
-      art: {
-        morning: ["Contemporary gallery circuit"],
-        afternoon: ["Studio workshop or street art tour"],
-        evening: ["Openings or art cinema screening"]
-      },
-      beach: {
-        morning: ["Sunrise shoreline walk"],
-        afternoon: ["Snorkel or sailing excursion"],
-        evening: ["Seafood dinner by the water"]
-      }
-    };
+    async function submitToBackend(e) {
+      e.preventDefault();
 
-    const budgetOverlays = {
-      budget: {
-        morning: ["Free walking route and photo spots"],
-        afternoon: ["Public transit day pass; free museum day"],
-        evening: ["Casual eats and local beer garden"]
-      },
-      moderate: {
-        morning: ["Barista-led coffee tasting"],
-        afternoon: ["Skip-the-line tickets to a highlight"],
-        evening: ["Mid-range bistro or tapas crawl"]
-      },
-      luxury: {
-        morning: ["Private guide for iconic sites"],
-        afternoon: ["Driver for scenic loop or winery tour"],
-        evening: ["Fine dining reservation and nightcaps"]
-      }
-    };
+      const destination = (document.getElementById('destination').value || '').trim();
+      const durationNum = Math.max(1, Math.min(30, parseInt(document.getElementById('duration').value || '0', 10)));
+      const duration = isFinite(durationNum) ? `${durationNum} days` : '3 days';
+      const budget = document.getElementById('budgetValue').value || 'moderate';
+      const interests = (document.getElementById('interests').value || '').trim();
 
-    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-    function buildDayPlan(preferences, budgetKey) {
-      const blocks = ["morning", "afternoon", "evening"];
-      const plan = {};
-      blocks.forEach(block => {
-        let options = [...(baseIdeas.general[block] || [])];
-        preferences.forEach(p => {
-          if (baseIdeas[p] && baseIdeas[p][block]) {
-            options = options.concat(baseIdeas[p][block]);
-          }
-        });
-        options = options.concat(budgetOverlays[budgetKey][block] || []);
-        plan[block] = pick(options);
-      });
-      return plan;
-    }
-
-    function pill(content) {
-      return `<span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700">
-        <i data-lucide="tag" class="h-3.5 w-3.5"></i>${content}
-      </span>`;
-    }
-
-    function titleCase(str) {
-      return str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
-    }
-
-    function buildHeaderCard({ destination, duration, budget, interests }) {
-      const interestPills = interests.length
-        ? interests.slice(0, 6).map(i => pill(titleCase(i))).join(" ")
-        : pill("Flexible");
-
-      const heroImg = `https://source.unsplash.com/1600x900/?${encodeURIComponent(destination)},city`;
-
-      return `
-        <div class="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-          <div class="grid md:grid-cols-2">
-            <div class="p-6">
-              <div class="flex items-center justify-between">
-                <h3 class="text-2xl font-semibold tracking-tight">${titleCase(destination)}</h3>
-                <span class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm text-neutral-700">
-                  <i data-lucide="calendar" class="h-4 w-4"></i>${duration} day${duration > 1 ? "s" : ""}
-                </span>
-              </div>
-              <p class="mt-2 text-neutral-600">Your personalized itinerary is ready. Tweak interests and regenerate anytime.</p>
-              <div class="mt-4 flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-2.5 py-1 text-xs text-white">
-                  <i data-lucide="wallet" class="h-3.5 w-3.5"></i>${titleCase(budget)}
-                </span>
-                ${interestPills}
-              </div>
-              <div class="mt-5 flex flex-wrap gap-3">
-                <button id="printBtn" class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm hover:bg-neutral-50">
-                  <i data-lucide="printer" class="h-4 w-4"></i>Print / PDF
-                </button>
-                <a class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm hover:bg-neutral-50"
-                   href="https://www.google.com/search?q=${encodeURIComponent(destination)}%20top%20sights" target="_blank" rel="noopener">
-                  <i data-lucide="external-link" class="h-4 w-4"></i>Research more
-                </a>
-              </div>
-            </div>
-            <div class="relative">
-              <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=1080&q=80" alt="${titleCase(destination)}" class="h-full w-full object-cover"/>
-              <div class="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-white text-xs">
-                <i data-lucide="image" class="h-3.5 w-3.5"></i> Photo inspiration
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function buildDayCard(dayNum, plan) {
-      const icons = { morning: "sunrise", afternoon: "sun", evening: "moon" };
-      const captions = { morning: "Morning", afternoon: "Afternoon", evening: "Evening" };
-      return `
-        <div class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h4 class="text-lg font-semibold tracking-tight">Day ${dayNum}</h4>
-            <span class="text-sm text-neutral-600">Balanced pace</span>
-          </div>
-          <div class="divide-y divide-neutral-200">
-            ${Object.keys(plan).map(key => `
-              <div class="py-3 flex items-start gap-3">
-                <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                  <i data-lucide="${icons[key]}" class="h-4.5 w-4.5"></i>
-                </span>
-                <div>
-                  <div class="text-sm font-medium">${captions[key]}</div>
-                  <p class="text-sm text-neutral-700 mt-0.5">${plan[key]}</p>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    function generateItinerary(e) {
-      e?.preventDefault();
-
-      const destination = (document.getElementById('destination').value || "").trim();
-      const duration = Math.max(1, Math.min(30, parseInt(document.getElementById('duration').value || "0", 10)));
-      const budget = document.getElementById('budgetValue').value || "moderate";
-      const interestsRaw = (document.getElementById('interests').value || "").toLowerCase();
-      const interests = interestsRaw.split(/[,/]| and | & |\n/gi)
-        .map(s => s.trim())
-        .filter(Boolean)
-        .slice(0, 8);
-
-      if (!destination || !duration) {
-        alert("Please enter a destination and duration.");
+      if (!destination || !durationNum) {
+        alert('Please enter a destination and duration.');
         return;
       }
 
@@ -536,32 +313,53 @@
         <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
           <div class="flex items-center gap-3 text-neutral-700">
             <i data-lucide="loader-2" class="h-5 w-5 animate-spin"></i>
-            Generating your itinerary...
+            Planning your itinerary...
           </div>
         </div>
       `;
       renderIcons();
 
-      // Simulate quick planning
-      setTimeout(() => {
-        const prefs = interests.filter(k => baseIdeas[k]);
-        const header = buildHeaderCard({ destination, duration, budget, interests });
-        const days = [];
-        for (let i = 1; i <= duration; i++) {
-          const plan = buildDayPlan(prefs, budget);
-          days.push(buildDayCard(i, plan));
-        }
-        results.innerHTML = header + days.join("");
+      try {
+        const resp = await fetch('/plan-trip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destination, duration, budget, interests })
+        });
 
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const md = (data && data.result) ? data.result : 'No result';
+
+        const content = (window.marked && window.marked.parse) ? window.marked.parse(md) : `<pre class="whitespace-pre-wrap">${md}</pre>`;
+        results.innerHTML = `
+          <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div class="mb-3 flex items-center justify-between">
+              <h3 class="text-xl font-semibold tracking-tight">Your Itinerary</h3>
+              <button id="printBtn" class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">
+                <i data-lucide="printer" class="h-4 w-4"></i> Print / PDF
+              </button>
+            </div>
+            <div class="prose max-w-none">${content}</div>
+          </div>
+        `;
         renderIcons();
-
-        // Print
         const printBtn = document.getElementById('printBtn');
         printBtn?.addEventListener('click', () => window.print());
-      }, 500);
+      } catch (err) {
+        results.innerHTML = `
+          <div class="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
+            <div class="flex items-center gap-2">
+              <i data-lucide="alert-triangle" class="h-5 w-5"></i>
+              <span>Failed to plan trip. Please try again.</span>
+            </div>
+          </div>
+        `;
+        renderIcons();
+        console.error('Plan error:', err);
+      }
     }
 
-    form.addEventListener('submit', generateItinerary);
+    form.addEventListener('submit', submitToBackend);
   </script>
 </body>
 </html>
