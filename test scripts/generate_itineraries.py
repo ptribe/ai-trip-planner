@@ -12,7 +12,7 @@ from datetime import datetime
 import os
 
 # API Configuration
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://localhost:8001"
 PLAN_TRIP_ENDPOINT = f"{API_BASE_URL}/plan-trip"
 
 # Synthetic Data Sets

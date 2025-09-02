@@ -27,7 +27,6 @@ except Exception:
 
 # LangGraph + LangChain
 from langgraph.graph import StateGraph, END, START
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict, Annotated
 import operator
@@ -86,19 +85,41 @@ llm = _init_llm()
 @tool
 def essential_info(destination: str) -> str:
     """Return essential destination info like weather, sights, and etiquette."""
-    return f"Key info for {destination}: mild weather, popular sights, local etiquette."
+    # Enhanced mock data with actual structure
+    return f"""Essential Information for {destination}:
+    - Climate: Tropical/temperate with seasonal variations
+    - Best time to visit: Spring and fall months
+    - Top attractions: Historical sites, natural landmarks, cultural centers
+    - Local customs: Respectful dress at religious sites, tipping culture varies
+    - Language: Local language with English widely spoken in tourist areas
+    - Currency: Local currency, credit cards accepted in most establishments
+    - Safety: Generally safe for tourists, standard precautions advised"""
 
 
 @tool
 def budget_basics(destination: str, duration: str) -> str:
     """Return high-level budget categories for a given destination and duration."""
-    return f"Budget for {destination} over {duration}: lodging, food, transit, attractions."
+    return f"""Budget breakdown for {destination} ({duration}):
+    - Accommodation: $50-200/night depending on style
+    - Meals: $30-80/day (street food to restaurants)
+    - Local transport: $10-30/day (public transit to taxis)
+    - Activities/attractions: $20-60/day
+    - Shopping/extras: $20-50/day
+    Total estimated daily budget: $130-420 depending on travel style"""
 
 
 @tool
 def local_flavor(destination: str, interests: Optional[str] = None) -> str:
     """Suggest authentic local experiences matching optional interests."""
-    return f"Local experiences for {destination}: authentic food, culture, and {interests or 'top picks'}."
+    interest_str = f" focusing on {interests}" if interests else ""
+    return f"""Authentic local experiences in {destination}{interest_str}:
+    - Morning markets with local vendors and fresh produce
+    - Traditional cooking classes with local families
+    - Neighborhood walking tours off the beaten path
+    - Local artisan workshops and craft demonstrations
+    - Community cultural performances and festivals
+    - Hidden cafes and restaurants favored by locals
+    - Sacred sites and temples with cultural significance"""
 
 
 @tool
@@ -111,7 +132,12 @@ def day_plan(destination: str, day: int) -> str:
 @tool
 def weather_brief(destination: str) -> str:
     """Return a brief weather summary for planning purposes."""
-    return f"Weather in {destination}: generally mild; check season for specifics."
+    return f"""Weather overview for {destination}:
+    - Current season: Varies by hemisphere and elevation
+    - Temperature range: 20-30°C (68-86°F) typical
+    - Rainfall: Seasonal patterns, pack rain gear if visiting in wet season
+    - Humidity: Moderate to high in tropical areas
+    - Pack: Layers, sun protection, comfortable walking shoes"""
 
 
 @tool
@@ -124,8 +150,13 @@ def visa_brief(destination: str) -> str:
 def attraction_prices(destination: str, attractions: Optional[List[str]] = None) -> str:
     """Return rough placeholder prices for attractions."""
     items = attractions or ["Museum", "Historic Site", "Viewpoint"]
-    priced = ", ".join(f"{a}: $10-$40" for a in items)
-    return f"Attraction prices in {destination}: {priced}"
+    priced = "\n    - ".join(f"{a}: $10-40 per person" for a in items)
+    return f"""Attraction pricing in {destination}:
+    - {priced}
+    - Multi-day passes: Often 20-30% savings
+    - Student/senior discounts: Usually 25-50% off
+    - Free days: Many museums offer free entry certain days/hours
+    - Booking online: Can save 10-15% vs gate prices"""
 
 
 @tool
@@ -137,7 +168,14 @@ def local_customs(destination: str) -> str:
 @tool
 def hidden_gems(destination: str) -> str:
     """Return a few off-the-beaten-path ideas."""
-    return f"Hidden gems in {destination}: small cafes, local markets, lesser-known viewpoints."
+    return f"""Hidden gems in {destination}:
+    - Secret sunrise viewpoint known mainly to locals
+    - Family-run restaurant with no sign (ask locals for directions)
+    - Abandoned temple/building with incredible architecture
+    - Local swimming hole or beach away from tourist crowds  
+    - Artisan quarter where craftsmen still work traditionally
+    - Night market that only operates certain days
+    - Community garden or park perfect for picnics"""
 
 
 @tool
@@ -169,22 +207,39 @@ def research_agent(state: TripState) -> TripState:
     prompt_t = (
         "You are a research assistant.\n"
         "Gather essential information about {destination}.\n"
-        "Use at most one tool if needed."
+        "Use tools to get weather, visa, and essential info, then summarize."
     )
     vars_ = {"destination": destination}
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        agent = llm.bind_tools([essential_info, weather_brief, visa_brief])
-        res = agent.invoke([SystemMessage(content=prompt_t.format(**vars_))])
-
-    out = res.content
+    
+    messages = [SystemMessage(content=prompt_t.format(**vars_))]
+    tools = [essential_info, weather_brief, visa_brief]
+    agent = llm.bind_tools(tools)
+    
     calls: List[Dict[str, Any]] = []
+    tool_results = []
+    
+    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+        res = agent.invoke(messages)
+    
+    # Collect tool calls and execute them
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
             calls.append({"agent": "research", "tool": c["name"], "args": c.get("args", {})})
-        tool_node = ToolNode([essential_info, weather_brief, visa_brief])
+        
+        tool_node = ToolNode(tools)
         tr = tool_node.invoke({"messages": [res]})
-        msgs = tr["messages"]
-        out = msgs[-1].content if msgs else out
+        tool_results = tr["messages"]
+        
+        # Add tool results to conversation and ask LLM to synthesize
+        messages.append(res)
+        messages.extend(tool_results)
+        messages.append(SystemMessage(content="Based on the above information, provide a comprehensive summary for the traveler."))
+        
+        # Get final synthesis from LLM
+        final_res = llm.invoke(messages)
+        out = final_res.content
+    else:
+        out = res.content
 
     return {"messages": [SystemMessage(content=out)], "research": out, "tool_calls": calls}
 
@@ -192,24 +247,39 @@ def research_agent(state: TripState) -> TripState:
 def budget_agent(state: TripState) -> TripState:
     req = state["trip_request"]
     destination, duration = req["destination"], req["duration"]
+    budget = req.get("budget", "moderate")
     prompt_t = (
         "You are a budget analyst.\n"
-        "Summarize high-level costs for {destination} over {duration}."
+        "Analyze costs for {destination} over {duration} with budget: {budget}.\n"
+        "Use tools to get pricing information, then provide a detailed breakdown."
     )
-    vars_ = {"destination": destination, "duration": duration}
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        agent = llm.bind_tools([budget_basics, attraction_prices])
-        res = agent.invoke([SystemMessage(content=prompt_t.format(**vars_))])
-
-    out = res.content
+    vars_ = {"destination": destination, "duration": duration, "budget": budget}
+    
+    messages = [SystemMessage(content=prompt_t.format(**vars_))]
+    tools = [budget_basics, attraction_prices]
+    agent = llm.bind_tools(tools)
+    
     calls: List[Dict[str, Any]] = []
+    
+    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+        res = agent.invoke(messages)
+    
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
             calls.append({"agent": "budget", "tool": c["name"], "args": c.get("args", {})})
-        tool_node = ToolNode([budget_basics, attraction_prices])
+        
+        tool_node = ToolNode(tools)
         tr = tool_node.invoke({"messages": [res]})
-        msgs = tr["messages"]
-        out = msgs[-1].content if msgs else out
+        
+        # Add tool results and ask for synthesis
+        messages.append(res)
+        messages.extend(tr["messages"])
+        messages.append(SystemMessage(content=f"Create a detailed budget breakdown for {duration} in {destination} with a {budget} budget."))
+        
+        final_res = llm.invoke(messages)
+        out = final_res.content
+    else:
+        out = res.content
 
     return {"messages": [SystemMessage(content=out)], "budget": out, "tool_calls": calls}
 
@@ -218,24 +288,39 @@ def local_agent(state: TripState) -> TripState:
     req = state["trip_request"]
     destination = req["destination"]
     interests = req.get("interests", "local culture")
+    travel_style = req.get("travel_style", "standard")
     prompt_t = (
         "You are a local guide.\n"
-        "Suggest authentic experiences in {destination} for interests: {interests}."
+        "Find authentic experiences in {destination} for someone interested in: {interests}.\n"
+        "Travel style: {travel_style}. Use tools to gather local insights."
     )
-    vars_ = {"destination": destination, "interests": interests}
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        agent = llm.bind_tools([local_flavor, local_customs, hidden_gems])
-        res = agent.invoke([SystemMessage(content=prompt_t.format(**vars_))])
-
-    out = res.content
+    vars_ = {"destination": destination, "interests": interests, "travel_style": travel_style}
+    
+    messages = [SystemMessage(content=prompt_t.format(**vars_))]
+    tools = [local_flavor, local_customs, hidden_gems]
+    agent = llm.bind_tools(tools)
+    
     calls: List[Dict[str, Any]] = []
+    
+    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+        res = agent.invoke(messages)
+    
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
             calls.append({"agent": "local", "tool": c["name"], "args": c.get("args", {})})
-        tool_node = ToolNode([local_flavor, local_customs, hidden_gems])
+        
+        tool_node = ToolNode(tools)
         tr = tool_node.invoke({"messages": [res]})
-        msgs = tr["messages"]
-        out = msgs[-1].content if msgs else out
+        
+        # Add tool results and ask for synthesis
+        messages.append(res)
+        messages.extend(tr["messages"])
+        messages.append(SystemMessage(content=f"Create a curated list of authentic experiences for someone interested in {interests} with a {travel_style} approach."))
+        
+        final_res = llm.invoke(messages)
+        out = final_res.content
+    else:
+        out = res.content
 
     return {"messages": [SystemMessage(content=out)], "local": out, "tool_calls": calls}
 
@@ -269,13 +354,20 @@ def build_graph():
     g.add_node("local", local_agent)
     g.add_node("itinerary", itinerary_agent)
 
+    # Run research, budget, and local agents in parallel
     g.add_edge(START, "research")
-    g.add_edge("research", "budget")
-    g.add_edge("budget", "local")
+    g.add_edge(START, "budget")
+    g.add_edge(START, "local")
+    
+    # All three agents feed into the itinerary agent
+    g.add_edge("research", "itinerary")
+    g.add_edge("budget", "itinerary")
     g.add_edge("local", "itinerary")
+    
     g.add_edge("itinerary", END)
 
-    return g.compile(checkpointer=MemorySaver())
+    # Compile without checkpointer to avoid state persistence issues
+    return g.compile()
 
 
 app = FastAPI(title="AI Trip Planner")
@@ -302,31 +394,31 @@ def health():
     return {"status": "healthy", "service": "ai-trip-planner"}
 
 
+# Initialize tracing once at startup, not per request
+if _TRACING:
+    try:
+        space_id = os.getenv("ARIZE_SPACE_ID")
+        api_key = os.getenv("ARIZE_API_KEY")
+        if space_id and api_key:
+            tp = register(space_id=space_id, api_key=api_key, project_name="ai-trip-planner")
+            LangChainInstrumentor().instrument(tracer_provider=tp, include_chains=True, include_agents=True, include_tools=True)
+            LiteLLMInstrumentor().instrument(tracer_provider=tp, skip_dep_check=True)
+    except Exception:
+        pass
+
 @app.post("/plan-trip", response_model=TripResponse)
 def plan_trip(req: TripRequest):
-    if _TRACING:
-        try:
-            space_id = os.getenv("ARIZE_SPACE_ID")
-            api_key = os.getenv("ARIZE_API_KEY")
-            if space_id and api_key:
-                tp = register(space_id=space_id, api_key=api_key, project_name="ai-trip-planner")
-                LangChainInstrumentor().instrument(tracer_provider=tp, include_chains=True, include_agents=True, include_tools=True)
-                LiteLLMInstrumentor().instrument(tracer_provider=tp, skip_dep_check=True)
-        except Exception:
-            pass
 
     graph = build_graph()
+    # Only include necessary fields in initial state
+    # Agent outputs (research, budget, local, final) will be added during execution
     state = {
         "messages": [],
         "trip_request": req.model_dump(),
-        "research": None,
-        "budget": None,
-        "local": None,
-        "final": None,
         "tool_calls": [],
     }
-    cfg = {"configurable": {"thread_id": f"tut_{req.destination}_{datetime.now().strftime('%H%M%S')}"}}
-    out = graph.invoke(state, cfg)
+    # No config needed without checkpointer
+    out = graph.invoke(state)
     return TripResponse(result=out.get("final", ""), tool_calls=out.get("tool_calls", []))
 
 
