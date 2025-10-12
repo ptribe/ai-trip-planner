@@ -83,3 +83,10 @@ coverage/
 # Temporary files
 tmp/
 temp/
+.specstory/**
+
+# Cursor
+.cursorrules
+
+test scripts/*.json
+backend/archive/ 

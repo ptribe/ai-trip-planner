@@ -5,7 +5,9 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 import time
+import json
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
@@ -14,10 +16,22 @@ try:
     from arize.otel import register
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.litellm import LiteLLMInstrumentor
-    from openinference.instrumentation import using_prompt_template
+    from openinference.instrumentation import using_prompt_template, using_metadata, using_attributes
     _TRACING = True
 except Exception:
     def using_prompt_template(**kwargs):  # type: ignore
+        from contextlib import contextmanager
+        @contextmanager
+        def _noop():
+            yield
+        return _noop()
+    def using_metadata(*args, **kwargs):  # type: ignore
+        from contextlib import contextmanager
+        @contextmanager
+        def _noop():
+            yield
+        return _noop()
+    def using_attributes(*args, **kwargs):  # type: ignore
         from contextlib import contextmanager
         @contextmanager
         def _noop():
@@ -32,7 +46,9 @@ from typing_extensions import TypedDict, Annotated
 import operator
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
+from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_community.vectorstores import InMemoryVectorStore
 
 
 class TripRequest(BaseModel):
@@ -41,6 +57,11 @@ class TripRequest(BaseModel):
     budget: Optional[str] = None
     interests: Optional[str] = None
     travel_style: Optional[str] = None
+    # Optional fields for enhanced session tracking and observability
+    user_input: Optional[str] = None
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    turn_index: Optional[int] = None
 
 
 class TripResponse(BaseModel):
@@ -79,6 +100,167 @@ def _init_llm():
 
 
 llm = _init_llm()
+
+
+# Feature flag for optional RAG demo (opt-in for learning)
+ENABLE_RAG = os.getenv("ENABLE_RAG", "0").lower() not in {"0", "false", "no"}
+
+
+# RAG helper: Load curated local guides as LangChain documents
+def _load_local_documents(path: Path) -> List[Document]:
+    """Load local guides JSON and convert to LangChain Documents."""
+    if not path.exists():
+        return []
+    try:
+        raw = json.loads(path.read_text())
+    except Exception:
+        return []
+
+    docs: List[Document] = []
+    for row in raw:
+        description = row.get("description")
+        city = row.get("city")
+        if not description or not city:
+            continue
+        interests = row.get("interests", []) or []
+        metadata = {
+            "city": city,
+            "interests": interests,
+            "source": row.get("source"),
+        }
+        # Prefix city + interests in content so embeddings capture location context
+        interest_text = ", ".join(interests) if interests else "general travel"
+        content = f"City: {city}\nInterests: {interest_text}\nGuide: {description}"
+        docs.append(Document(page_content=content, metadata=metadata))
+    return docs
+
+
+class LocalGuideRetriever:
+    """Retrieves curated local experiences using vector similarity search.
+    
+    This class demonstrates production RAG patterns for students:
+    - Vector embeddings for semantic search
+    - Fallback to keyword matching when embeddings unavailable
+    - Graceful degradation with feature flags
+    """
+    
+    def __init__(self, data_path: Path):
+        """Initialize retriever with local guides data.
+        
+        Args:
+            data_path: Path to local_guides.json file
+        """
+        self._docs = _load_local_documents(data_path)
+        self._embeddings: Optional[OpenAIEmbeddings] = None
+        self._vectorstore: Optional[InMemoryVectorStore] = None
+        
+        # Only create embeddings when RAG is enabled and we have an API key
+        if ENABLE_RAG and self._docs and not os.getenv("TEST_MODE"):
+            try:
+                model = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
+                self._embeddings = OpenAIEmbeddings(model=model)
+                store = InMemoryVectorStore(embedding=self._embeddings)
+                store.add_documents(self._docs)
+                self._vectorstore = store
+            except Exception:
+                # Gracefully degrade to keyword search if embeddings fail
+                self._embeddings = None
+                self._vectorstore = None
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if any documents were loaded."""
+        return not self._docs
+
+    def retrieve(self, destination: str, interests: Optional[str], *, k: int = 3) -> List[Dict[str, Any]]:
+        """Retrieve top-k relevant local guides for a destination.
+        
+        Args:
+            destination: City or destination name
+            interests: Comma-separated interests (e.g., "food, art")
+            k: Number of results to return
+            
+        Returns:
+            List of dicts with 'content', 'metadata', and 'score' keys
+        """
+        if not ENABLE_RAG or self.is_empty:
+            return []
+
+        # Use vector search if available, otherwise fall back to keywords
+        if not self._vectorstore:
+            return self._keyword_fallback(destination, interests, k=k)
+
+        query = destination
+        if interests:
+            query = f"{destination} with interests {interests}"
+        
+        try:
+            # LangChain retriever ensures embeddings + searches are traced
+            retriever = self._vectorstore.as_retriever(search_kwargs={"k": max(k, 4)})
+            docs = retriever.invoke(query)
+        except Exception:
+            return self._keyword_fallback(destination, interests, k=k)
+
+        # Format results with metadata and scores
+        top_docs = docs[:k]
+        results = []
+        for doc in top_docs:
+            score_val: float = 0.0
+            if isinstance(doc.metadata, dict):
+                maybe_score = doc.metadata.get("score")
+                if isinstance(maybe_score, (int, float)):
+                    score_val = float(maybe_score)
+            results.append({
+                "content": doc.page_content,
+                "metadata": doc.metadata,
+                "score": score_val,
+            })
+
+        if not results:
+            return self._keyword_fallback(destination, interests, k=k)
+        return results
+
+    def _keyword_fallback(self, destination: str, interests: Optional[str], *, k: int) -> List[Dict[str, Any]]:
+        """Simple keyword-based retrieval when embeddings unavailable.
+        
+        This demonstrates graceful degradation for students learning about
+        fallback strategies in production systems.
+        """
+        dest_lower = destination.lower()
+        interest_terms = [part.strip().lower() for part in (interests or "").split(",") if part.strip()]
+
+        def _score(doc: Document) -> int:
+            score = 0
+            city_match = doc.metadata.get("city", "").lower()
+            # Match city name
+            if dest_lower and dest_lower.split(",")[0] in city_match:
+                score += 2
+            # Match interests
+            for term in interest_terms:
+                if term and term in " ".join(doc.metadata.get("interests") or []).lower():
+                    score += 1
+                if term and term in doc.page_content.lower():
+                    score += 1
+            return score
+
+        scored_docs = [(_score(doc), doc) for doc in self._docs]
+        scored_docs.sort(key=lambda item: item[0], reverse=True)
+        top_docs = scored_docs[:k]
+        
+        results = []
+        for score, doc in top_docs:
+            if score > 0:
+                results.append({
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                    "score": float(score),
+                })
+        return results
+
+
+# Initialize retriever at module level (loads data once at startup)
+_DATA_DIR = Path(__file__).parent / "data"
+GUIDE_RETRIEVER = LocalGuideRetriever(_DATA_DIR / "local_guides.json")
 
 
 # Minimal tools (deterministic for tutorials)
@@ -289,12 +471,38 @@ def local_agent(state: TripState) -> TripState:
     destination = req["destination"]
     interests = req.get("interests", "local culture")
     travel_style = req.get("travel_style", "standard")
+    
+    # RAG: Retrieve curated local guides if enabled
+    context_lines = []
+    if ENABLE_RAG:
+        retrieved = GUIDE_RETRIEVER.retrieve(destination, interests, k=3)
+        if retrieved:
+            context_lines.append("=== Curated Local Guides (from database) ===")
+            for idx, item in enumerate(retrieved, 1):
+                content = item["content"]
+                source = item["metadata"].get("source", "Unknown")
+                context_lines.append(f"{idx}. {content}")
+                context_lines.append(f"   Source: {source}")
+            context_lines.append("=== End of Curated Guides ===\n")
+    
+    context_text = "\n".join(context_lines) if context_lines else ""
+    
     prompt_t = (
         "You are a local guide.\n"
         "Find authentic experiences in {destination} for someone interested in: {interests}.\n"
-        "Travel style: {travel_style}. Use tools to gather local insights."
+        "Travel style: {travel_style}. Use tools to gather local insights.\n"
     )
-    vars_ = {"destination": destination, "interests": interests, "travel_style": travel_style}
+    
+    # Add retrieved context to prompt if available
+    if context_text:
+        prompt_t += "\nRelevant curated experiences from our database:\n{context}\n"
+    
+    vars_ = {
+        "destination": destination,
+        "interests": interests,
+        "travel_style": travel_style,
+        "context": context_text if context_text else "No curated context available.",
+    }
     
     messages = [SystemMessage(content=prompt_t.format(**vars_))]
     tools = [local_flavor, local_customs, hidden_gems]

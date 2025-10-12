@@ -8,7 +8,7 @@ Fast, sequential trip planning with FastAPI (backend), React (frontend), and Lan
 - Python 3.10+ (Docker optional)
 
 2) Configure environment
-- Copy `backend/env_example.txt` to `backend/.env`.
+- Copy `backend/.env.example` to `backend/.env`.
 - Set one LLM key: `OPENAI_API_KEY=...` or `OPENROUTER_API_KEY=...`.
 - Optional: `ARIZE_SPACE_ID` and `ARIZE_API_KEY` for tracing.
 
@@ -22,6 +22,8 @@ uv pip install -r requirements.txt   # faster, deterministic installs
 
 4) Run
 ```bash
+# make sure you are back in the root directory of ai-trip-planner
+cd ..
 ./start.sh                      # starts backend on 8000; serves minimal UI at '/'
 # or
 cd backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -60,6 +62,20 @@ docker-compose up --build
 
 ## Notes on Tracing (Optional)
 - If `ARIZE_SPACE_ID` and `ARIZE_API_KEY` are set, OpenInference exports spans for agents/tools/LLM calls. View at https://app.arize.com.
+
+## RAG Feature (Optional)
+
+The local agent can use vector search to retrieve curated local experiences from a database of 540+ real-world recommendations:
+
+- **Enable**: Set `ENABLE_RAG=1` in your `.env` file
+- **Requirements**: Requires `OPENAI_API_KEY` for embeddings
+- **Data**: Uses curated experiences from `backend/data/local_guides.json`
+- **Benefits**: Provides grounded, cited recommendations with sources
+- **Learning**: Great example of production RAG patterns with fallback strategies
+
+When disabled (default), the local agent uses simple heuristic responses.
+
+See `RAG.md` for detailed documentation, how embeddings work, and how to extend the database.
 
 ## Troubleshooting
 - 401/empty results: verify `OPENAI_API_KEY` or `OPENROUTER_API_KEY` in `backend/.env`.

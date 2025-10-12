@@ -224,9 +224,100 @@ def main():
     parser.add_argument("--base-url", default=os.getenv("API_BASE_URL", "http://localhost:8000"))
     parser.add_argument("--count", type=int, default=12, help="Total requests to send (scenarios are sampled)")
     parser.add_argument("--outfile", default="synthetic_bad_tool_calls.json")
+    parser.add_argument("--test-rag", action="store_true", help="Include RAG-specific test scenarios")
     args = parser.parse_args()
 
     scenarios = scenarios_bad_tool_calls()
+    
+    # Add RAG-specific test scenarios if flag is set
+    if args.test_rag:
+        rag_scenarios = [
+            {
+                "name": "RAG Test: Prague History",
+                "request": {
+                    "destination": "Prague",
+                    "duration": "4 days",
+                    "budget": "$1200",
+                    "interests": "history, architecture",
+                    "travel_style": "cultural",
+                    "session_id": "rag_test_001",
+                    "user_id": "test_user",
+                    "turn_index": 1,
+                },
+                "recommended_tools": ["local_flavor", "local_customs"],
+                "wrong_tools": [],
+                "expect_rag": True,
+            },
+            {
+                "name": "RAG Test: Tokyo Food and Anime",
+                "request": {
+                    "destination": "Tokyo",
+                    "duration": "6 days",
+                    "budget": "$2000",
+                    "interests": "food, anime, technology",
+                    "travel_style": "enthusiast",
+                    "session_id": "rag_test_002",
+                    "user_id": "test_user",
+                    "turn_index": 1,
+                },
+                "recommended_tools": ["local_flavor", "hidden_gems"],
+                "wrong_tools": [],
+                "expect_rag": True,
+            },
+            {
+                "name": "RAG Test: Barcelona Art and Food",
+                "request": {
+                    "destination": "Barcelona",
+                    "duration": "5 days",
+                    "budget": "$1500",
+                    "interests": "art, food, architecture",
+                    "travel_style": "explorer",
+                    "session_id": "rag_test_003",
+                    "user_id": "test_user",
+                    "turn_index": 1,
+                },
+                "recommended_tools": ["local_flavor", "local_customs"],
+                "wrong_tools": [],
+                "expect_rag": True,
+            },
+            {
+                "name": "RAG Test: Bangkok Markets",
+                "request": {
+                    "destination": "Bangkok",
+                    "duration": "5 days",
+                    "budget": "$800",
+                    "interests": "food, markets, wellness",
+                    "travel_style": "authentic",
+                    "session_id": "rag_test_004",
+                    "user_id": "test_user",
+                    "turn_index": 1,
+                },
+                "recommended_tools": ["local_flavor", "hidden_gems"],
+                "wrong_tools": [],
+                "expect_rag": True,
+            },
+            {
+                "name": "RAG Test: New York Neighborhoods",
+                "request": {
+                    "destination": "New York",
+                    "duration": "4 days",
+                    "budget": "$2500",
+                    "interests": "food, art, neighborhoods",
+                    "travel_style": "local",
+                    "session_id": "rag_test_005",
+                    "user_id": "test_user",
+                    "turn_index": 1,
+                },
+                "recommended_tools": ["local_flavor", "hidden_gems"],
+                "wrong_tools": [],
+                "expect_rag": True,
+            },
+        ]
+        scenarios.extend(rag_scenarios)
+        print(f"\n✨ Added {len(rag_scenarios)} RAG test scenarios")
+        print("📝 These scenarios test retrieval with specific cities in the database")
+        print("🔍 Check responses for curated guide sources when ENABLE_RAG=1\n")
+    
     results: List[Dict[str, Any]] = []
 
     print("🌋 Generating synthetic bad-tool-call requests")
