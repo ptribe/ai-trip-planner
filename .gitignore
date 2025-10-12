@@ -90,3 +90,5 @@ temp/
 
 test scripts/*.json
 backend/archive/ 
+
+backend/__pycache__
