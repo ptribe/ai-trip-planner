@@ -63,9 +63,11 @@ docker-compose up --build
 ## Notes on Tracing (Optional)
 - If `ARIZE_SPACE_ID` and `ARIZE_API_KEY` are set, OpenInference exports spans for agents/tools/LLM calls. View at https://app.arize.com.
 
-## RAG Feature (Optional)
+## Optional Features
 
-The local agent can use vector search to retrieve curated local experiences from a database of 540+ real-world recommendations:
+### RAG: Vector Search for Local Guides
+
+The local agent can use vector search to retrieve curated local experiences from a database of 90+ real-world recommendations:
 
 - **Enable**: Set `ENABLE_RAG=1` in your `.env` file
 - **Requirements**: Requires `OPENAI_API_KEY` for embeddings
@@ -73,9 +75,20 @@ The local agent can use vector search to retrieve curated local experiences from
 - **Benefits**: Provides grounded, cited recommendations with sources
 - **Learning**: Great example of production RAG patterns with fallback strategies
 
-When disabled (default), the local agent uses simple heuristic responses.
+When disabled (default), the local agent uses LLM-generated responses.
 
-See `RAG.md` for detailed documentation, how embeddings work, and how to extend the database.
+See `RAG.md` for detailed documentation.
+
+### Web Search: Real-Time Tool Data
+
+Tools can call real web search APIs (Tavily or SerpAPI) for up-to-date travel information:
+
+- **Enable**: Add `TAVILY_API_KEY` or `SERPAPI_API_KEY` to your `.env` file
+- **Benefits**: Real-time data for weather, attractions, prices, customs, etc.
+- **Fallback**: Without API keys, tools automatically fall back to LLM-generated responses
+- **Learning**: Demonstrates graceful degradation and multi-tier fallback patterns
+
+Recommended: Tavily (free tier: 1000 searches/month) - https://tavily.com
 
 ## Troubleshooting
 - 401/empty results: verify `OPENAI_API_KEY` or `OPENROUTER_API_KEY` in `backend/.env`.

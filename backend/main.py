@@ -17,6 +17,7 @@ try:
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.litellm import LiteLLMInstrumentor
     from openinference.instrumentation import using_prompt_template, using_metadata, using_attributes
+    from opentelemetry import trace
     _TRACING = True
 except Exception:
     def using_prompt_template(**kwargs):  # type: ignore
@@ -49,6 +50,7 @@ from langchain_core.tools import tool
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import InMemoryVectorStore
+import httpx
 
 
 class TripRequest(BaseModel):
@@ -263,114 +265,247 @@ _DATA_DIR = Path(__file__).parent / "data"
 GUIDE_RETRIEVER = LocalGuideRetriever(_DATA_DIR / "local_guides.json")
 
 
-# Minimal tools (deterministic for tutorials)
+# Search API configuration and helpers
+SEARCH_TIMEOUT = 10.0  # seconds
+
+
+def _compact(text: str, limit: int = 200) -> str:
+    """Compact text to a maximum length, truncating at word boundaries."""
+    if not text:
+        return ""
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    truncated = cleaned[:limit]
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        truncated = truncated[:last_space]
+    return truncated.rstrip(",.;- ")
+
+
+def _search_api(query: str) -> Optional[str]:
+    """Search the web using Tavily or SerpAPI if configured, return None otherwise.
+    
+    This demonstrates graceful degradation: tools work with or without API keys.
+    Students can enable real search by adding TAVILY_API_KEY or SERPAPI_API_KEY.
+    """
+    query = query.strip()
+    if not query:
+        return None
+
+    # Try Tavily first (recommended for AI apps)
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    if tavily_key:
+        try:
+            with httpx.Client(timeout=SEARCH_TIMEOUT) as client:
+                resp = client.post(
+                    "https://api.tavily.com/search",
+                    json={
+                        "api_key": tavily_key,
+                        "query": query,
+                        "max_results": 3,
+                        "search_depth": "basic",
+                        "include_answer": True,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data.get("answer") or ""
+                snippets = [
+                    item.get("content") or item.get("snippet") or ""
+                    for item in data.get("results", [])
+                ]
+                combined = " ".join([answer] + snippets).strip()
+                if combined:
+                    return _compact(combined)
+        except Exception:
+            pass  # Fail gracefully, try next option
+
+    # Try SerpAPI as fallback
+    serp_key = os.getenv("SERPAPI_API_KEY")
+    if serp_key:
+        try:
+            with httpx.Client(timeout=SEARCH_TIMEOUT) as client:
+                resp = client.get(
+                    "https://serpapi.com/search",
+                    params={
+                        "api_key": serp_key,
+                        "engine": "google",
+                        "num": 5,
+                        "q": query,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                organic = data.get("organic_results", [])
+                snippets = [item.get("snippet", "") for item in organic]
+                combined = " ".join(snippets).strip()
+                if combined:
+                    return _compact(combined)
+        except Exception:
+            pass  # Fail gracefully
+
+    return None  # No search APIs configured
+
+
+def _llm_fallback(instruction: str, context: Optional[str] = None) -> str:
+    """Use the LLM to generate a response when search APIs aren't available.
+    
+    This ensures tools always return useful information, even without API keys.
+    """
+    prompt = "Respond with 200 characters or less.\n" + instruction.strip()
+    if context:
+        prompt += "\nContext:\n" + context.strip()
+    response = llm.invoke([
+        SystemMessage(content="You are a concise travel assistant."),
+        HumanMessage(content=prompt),
+    ])
+    return _compact(response.content)
+
+
+def _with_prefix(prefix: str, summary: str) -> str:
+    """Add a prefix to a summary for clarity."""
+    text = f"{prefix}: {summary}" if prefix else summary
+    return _compact(text)
+
+
+# Tools with real API calls + LLM fallback (graceful degradation pattern)
 @tool
 def essential_info(destination: str) -> str:
     """Return essential destination info like weather, sights, and etiquette."""
-    # Enhanced mock data with actual structure
-    return f"""Essential Information for {destination}:
-    - Climate: Tropical/temperate with seasonal variations
-    - Best time to visit: Spring and fall months
-    - Top attractions: Historical sites, natural landmarks, cultural centers
-    - Local customs: Respectful dress at religious sites, tipping culture varies
-    - Language: Local language with English widely spoken in tourist areas
-    - Currency: Local currency, credit cards accepted in most establishments
-    - Safety: Generally safe for tourists, standard precautions advised"""
+    query = f"{destination} travel essentials weather best time top attractions etiquette language currency safety"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} essentials", summary)
+    
+    # LLM fallback when no search API is configured
+    instruction = f"Summarize the climate, best visit time, standout sights, customs, language, currency, and safety tips for {destination}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def budget_basics(destination: str, duration: str) -> str:
     """Return high-level budget categories for a given destination and duration."""
-    return f"""Budget breakdown for {destination} ({duration}):
-    - Accommodation: $50-200/night depending on style
-    - Meals: $30-80/day (street food to restaurants)
-    - Local transport: $10-30/day (public transit to taxis)
-    - Activities/attractions: $20-60/day
-    - Shopping/extras: $20-50/day
-    Total estimated daily budget: $130-420 depending on travel style"""
+    query = f"{destination} travel budget average daily costs {duration}"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} budget {duration}", summary)
+    
+    instruction = f"Outline lodging, meals, transport, activities, and extra costs for a {duration} trip to {destination}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def local_flavor(destination: str, interests: Optional[str] = None) -> str:
     """Suggest authentic local experiences matching optional interests."""
-    interest_str = f" focusing on {interests}" if interests else ""
-    return f"""Authentic local experiences in {destination}{interest_str}:
-    - Morning markets with local vendors and fresh produce
-    - Traditional cooking classes with local families
-    - Neighborhood walking tours off the beaten path
-    - Local artisan workshops and craft demonstrations
-    - Community cultural performances and festivals
-    - Hidden cafes and restaurants favored by locals
-    - Sacred sites and temples with cultural significance"""
+    focus = interests or "local culture"
+    query = f"{destination} authentic local experiences {focus}"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} {focus}", summary)
+    
+    instruction = f"Recommend authentic local experiences in {destination} that highlight {focus}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def day_plan(destination: str, day: int) -> str:
     """Return a simple day plan outline for a specific day number."""
-    return f"Day {day} in {destination}: breakfast, highlight visit, lunch, afternoon walk, dinner."
+    query = f"{destination} day {day} itinerary highlights"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"Day {day} in {destination}", summary)
+    
+    instruction = f"Outline key activities for day {day} in {destination}, covering morning, afternoon, and evening."
+    return _llm_fallback(instruction)
 
 
 # Additional simple tools per agent (to mirror original multi-tool behavior)
 @tool
 def weather_brief(destination: str) -> str:
     """Return a brief weather summary for planning purposes."""
-    return f"""Weather overview for {destination}:
-    - Current season: Varies by hemisphere and elevation
-    - Temperature range: 20-30°C (68-86°F) typical
-    - Rainfall: Seasonal patterns, pack rain gear if visiting in wet season
-    - Humidity: Moderate to high in tropical areas
-    - Pack: Layers, sun protection, comfortable walking shoes"""
+    query = f"{destination} weather forecast travel season temperatures rainfall"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} weather", summary)
+    
+    instruction = f"Give a weather brief for {destination} noting season, temperatures, rainfall, humidity, and packing guidance."
+    return _llm_fallback(instruction)
 
 
 @tool
 def visa_brief(destination: str) -> str:
-    """Return a brief visa guidance placeholder for tutorial purposes."""
-    return f"Visa guidance for {destination}: check your nationality's embassy site."
+    """Return a brief visa guidance for travel planning."""
+    query = f"{destination} tourist visa requirements entry rules"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} visa", summary)
+    
+    instruction = f"Provide a visa guidance summary for visiting {destination}, including advice to confirm with the relevant embassy."
+    return _llm_fallback(instruction)
 
 
 @tool
 def attraction_prices(destination: str, attractions: Optional[List[str]] = None) -> str:
-    """Return rough placeholder prices for attractions."""
-    items = attractions or ["Museum", "Historic Site", "Viewpoint"]
-    priced = "\n    - ".join(f"{a}: $10-40 per person" for a in items)
-    return f"""Attraction pricing in {destination}:
-    - {priced}
-    - Multi-day passes: Often 20-30% savings
-    - Student/senior discounts: Usually 25-50% off
-    - Free days: Many museums offer free entry certain days/hours
-    - Booking online: Can save 10-15% vs gate prices"""
+    """Return pricing information for attractions."""
+    items = attractions or ["popular attractions"]
+    focus = ", ".join(items)
+    query = f"{destination} attraction ticket prices {focus}"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} attraction prices", summary)
+    
+    instruction = f"Share typical ticket prices and savings tips for attractions such as {focus} in {destination}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def local_customs(destination: str) -> str:
-    """Return simple etiquette reminders for the destination."""
-    return f"Customs in {destination}: be polite, modest dress in sacred places, learn greetings."
+    """Return cultural etiquette and customs information."""
+    query = f"{destination} cultural etiquette travel customs"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} customs", summary)
+    
+    instruction = f"Summarize key etiquette and cultural customs travelers should know before visiting {destination}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def hidden_gems(destination: str) -> str:
-    """Return a few off-the-beaten-path ideas."""
-    return f"""Hidden gems in {destination}:
-    - Secret sunrise viewpoint known mainly to locals
-    - Family-run restaurant with no sign (ask locals for directions)
-    - Abandoned temple/building with incredible architecture
-    - Local swimming hole or beach away from tourist crowds  
-    - Artisan quarter where craftsmen still work traditionally
-    - Night market that only operates certain days
-    - Community garden or park perfect for picnics"""
+    """Return lesser-known attractions and experiences."""
+    query = f"{destination} hidden gems local secrets lesser known spots"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} hidden gems", summary)
+    
+    instruction = f"List lesser-known attractions or experiences that feel like hidden gems in {destination}."
+    return _llm_fallback(instruction)
 
 
 @tool
 def travel_time(from_location: str, to_location: str, mode: str = "public") -> str:
-    """Return an approximate travel time placeholder."""
-    return f"Travel from {from_location} to {to_location} by {mode}: ~20-60 minutes."
+    """Return travel time estimates between locations."""
+    query = f"travel time {from_location} to {to_location} by {mode}"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{from_location}→{to_location} {mode}", summary)
+    
+    instruction = f"Estimate travel time from {from_location} to {to_location} by {mode} transport."
+    return _llm_fallback(instruction)
 
 
 @tool
 def packing_list(destination: str, duration: str, activities: Optional[List[str]] = None) -> str:
-    """Return a generic packing list summary."""
-    acts = ", ".join(activities or ["walking", "sightseeing"]) 
-    return f"Packing for {destination} ({duration}): comfortable shoes, layers, adapter; for {acts}."
+    """Return packing recommendations for the trip."""
+    acts = ", ".join(activities or ["sightseeing"])
+    query = f"what to pack for {destination} {duration} {acts}"
+    summary = _search_api(query)
+    if summary:
+        return _with_prefix(f"{destination} packing", summary)
+    
+    instruction = f"Suggest packing essentials for a {duration} trip to {destination} focused on {acts}."
+    return _llm_fallback(instruction)
 
 
 class TripState(TypedDict):
@@ -538,10 +673,20 @@ def itinerary_agent(state: TripState) -> TripState:
     destination = req["destination"]
     duration = req["duration"]
     travel_style = req.get("travel_style", "standard")
-    prompt_t = (
-        "Create a {duration} itinerary for {destination} ({travel_style}).\n\n"
-        "Inputs:\nResearch: {research}\nBudget: {budget}\nLocal: {local}\n"
-    )
+    user_input = (req.get("user_input") or "").strip()
+    
+    prompt_parts = [
+        "Create a {duration} itinerary for {destination} ({travel_style}).",
+        "",
+        "Inputs:",
+        "Research: {research}",
+        "Budget: {budget}",
+        "Local: {local}",
+    ]
+    if user_input:
+        prompt_parts.append("User input: {user_input}")
+    
+    prompt_t = "\n".join(prompt_parts)
     vars_ = {
         "duration": duration,
         "destination": destination,
@@ -549,9 +694,22 @@ def itinerary_agent(state: TripState) -> TripState:
         "research": (state.get("research") or "")[:400],
         "budget": (state.get("budget") or "")[:400],
         "local": (state.get("local") or "")[:400],
+        "user_input": user_input,
     }
+    
+    # Add span attributes for better observability in Arize
     with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        res = llm.invoke([SystemMessage(content=prompt_t.format(**vars_))])
+        with using_attributes(tags=["itinerary", "final_agent"]):
+            if _TRACING:
+                current_span = trace.get_current_span()
+                if current_span:
+                    current_span.set_attribute("metadata.itinerary", "true")
+                    current_span.set_attribute("metadata.agent_type", "itinerary")
+                    current_span.set_attribute("metadata.agent_node", "itinerary_agent")
+                    if user_input:
+                        current_span.set_attribute("metadata.user_input", user_input)
+            res = llm.invoke([SystemMessage(content=prompt_t.format(**vars_))])
+    
     return {"messages": [SystemMessage(content=res.content)], "final": res.content}
 
 
@@ -616,8 +774,8 @@ if _TRACING:
 
 @app.post("/plan-trip", response_model=TripResponse)
 def plan_trip(req: TripRequest):
-
     graph = build_graph()
+    
     # Only include necessary fields in initial state
     # Agent outputs (research, budget, local, final) will be added during execution
     state = {
@@ -625,8 +783,30 @@ def plan_trip(req: TripRequest):
         "trip_request": req.model_dump(),
         "tool_calls": [],
     }
-    # No config needed without checkpointer
-    out = graph.invoke(state)
+    
+    # Add session and user tracking attributes to the trace
+    session_id = req.session_id
+    user_id = req.user_id
+    turn_idx = req.turn_index
+    
+    # Build attributes for session and user tracking
+    attrs_kwargs = {}
+    if session_id:
+        attrs_kwargs["session_id"] = session_id
+    if user_id:
+        attrs_kwargs["user_id"] = user_id
+    
+    # Add turn_index as a custom span attribute if provided
+    if turn_idx is not None and _TRACING:
+        with using_attributes(**attrs_kwargs):
+            current_span = trace.get_current_span()
+            if current_span:
+                current_span.set_attribute("turn_index", turn_idx)
+            out = graph.invoke(state)
+    else:
+        with using_attributes(**attrs_kwargs):
+            out = graph.invoke(state)
+    
     return TripResponse(result=out.get("final", ""), tool_calls=out.get("tool_calls", []))
 
 
