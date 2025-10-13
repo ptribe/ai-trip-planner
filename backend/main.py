@@ -535,8 +535,16 @@ def research_agent(state: TripState) -> TripState:
     calls: List[Dict[str, Any]] = []
     tool_results = []
     
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        res = agent.invoke(messages)
+    # Agent metadata and prompt template instrumentation
+    with using_attributes(tags=["research", "info_gathering"]):
+        if _TRACING:
+            current_span = trace.get_current_span()
+            if current_span:
+                current_span.set_attribute("metadata.agent_type", "research")
+                current_span.set_attribute("metadata.agent_node", "research_agent")
+        
+        with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+            res = agent.invoke(messages)
     
     # Collect tool calls and execute them
     if getattr(res, "tool_calls", None):
@@ -550,10 +558,14 @@ def research_agent(state: TripState) -> TripState:
         # Add tool results to conversation and ask LLM to synthesize
         messages.append(res)
         messages.extend(tool_results)
-        messages.append(SystemMessage(content="Based on the above information, provide a comprehensive summary for the traveler."))
         
-        # Get final synthesis from LLM
-        final_res = llm.invoke(messages)
+        synthesis_prompt = "Based on the above information, provide a comprehensive summary for the traveler."
+        messages.append(SystemMessage(content=synthesis_prompt))
+        
+        # Instrument synthesis LLM call with its own prompt template
+        synthesis_vars = {"destination": destination, "context": "tool_results"}
+        with using_prompt_template(template=synthesis_prompt, variables=synthesis_vars, version="v1-synthesis"):
+            final_res = llm.invoke(messages)
         out = final_res.content
     else:
         out = res.content
@@ -578,8 +590,16 @@ def budget_agent(state: TripState) -> TripState:
     
     calls: List[Dict[str, Any]] = []
     
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        res = agent.invoke(messages)
+    # Agent metadata and prompt template instrumentation
+    with using_attributes(tags=["budget", "cost_analysis"]):
+        if _TRACING:
+            current_span = trace.get_current_span()
+            if current_span:
+                current_span.set_attribute("metadata.agent_type", "budget")
+                current_span.set_attribute("metadata.agent_node", "budget_agent")
+        
+        with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+            res = agent.invoke(messages)
     
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
@@ -591,9 +611,14 @@ def budget_agent(state: TripState) -> TripState:
         # Add tool results and ask for synthesis
         messages.append(res)
         messages.extend(tr["messages"])
-        messages.append(SystemMessage(content=f"Create a detailed budget breakdown for {duration} in {destination} with a {budget} budget."))
         
-        final_res = llm.invoke(messages)
+        synthesis_prompt = f"Create a detailed budget breakdown for {duration} in {destination} with a {budget} budget."
+        messages.append(SystemMessage(content=synthesis_prompt))
+        
+        # Instrument synthesis LLM call
+        synthesis_vars = {"duration": duration, "destination": destination, "budget": budget}
+        with using_prompt_template(template=synthesis_prompt, variables=synthesis_vars, version="v1-synthesis"):
+            final_res = llm.invoke(messages)
         out = final_res.content
     else:
         out = res.content
@@ -645,8 +670,18 @@ def local_agent(state: TripState) -> TripState:
     
     calls: List[Dict[str, Any]] = []
     
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        res = agent.invoke(messages)
+    # Agent metadata and prompt template instrumentation
+    with using_attributes(tags=["local", "local_experiences"]):
+        if _TRACING:
+            current_span = trace.get_current_span()
+            if current_span:
+                current_span.set_attribute("metadata.agent_type", "local")
+                current_span.set_attribute("metadata.agent_node", "local_agent")
+                if ENABLE_RAG and context_text:
+                    current_span.set_attribute("metadata.rag_enabled", "true")
+        
+        with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+            res = agent.invoke(messages)
     
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
@@ -658,9 +693,14 @@ def local_agent(state: TripState) -> TripState:
         # Add tool results and ask for synthesis
         messages.append(res)
         messages.extend(tr["messages"])
-        messages.append(SystemMessage(content=f"Create a curated list of authentic experiences for someone interested in {interests} with a {travel_style} approach."))
         
-        final_res = llm.invoke(messages)
+        synthesis_prompt = f"Create a curated list of authentic experiences for someone interested in {interests} with a {travel_style} approach."
+        messages.append(SystemMessage(content=synthesis_prompt))
+        
+        # Instrument synthesis LLM call
+        synthesis_vars = {"interests": interests, "travel_style": travel_style, "destination": destination}
+        with using_prompt_template(template=synthesis_prompt, variables=synthesis_vars, version="v1-synthesis"):
+            final_res = llm.invoke(messages)
         out = final_res.content
     else:
         out = res.content
@@ -698,16 +738,19 @@ def itinerary_agent(state: TripState) -> TripState:
     }
     
     # Add span attributes for better observability in Arize
-    with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-        with using_attributes(tags=["itinerary", "final_agent"]):
-            if _TRACING:
-                current_span = trace.get_current_span()
-                if current_span:
-                    current_span.set_attribute("metadata.itinerary", "true")
-                    current_span.set_attribute("metadata.agent_type", "itinerary")
-                    current_span.set_attribute("metadata.agent_node", "itinerary_agent")
-                    if user_input:
-                        current_span.set_attribute("metadata.user_input", user_input)
+    # NOTE: using_attributes must be OUTER context for proper propagation
+    with using_attributes(tags=["itinerary", "final_agent"]):
+        if _TRACING:
+            current_span = trace.get_current_span()
+            if current_span:
+                current_span.set_attribute("metadata.itinerary", "true")
+                current_span.set_attribute("metadata.agent_type", "itinerary")
+                current_span.set_attribute("metadata.agent_node", "itinerary_agent")
+                if user_input:
+                    current_span.set_attribute("metadata.user_input", user_input)
+        
+        # Prompt template wrapper for Arize Playground integration
+        with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
             res = llm.invoke([SystemMessage(content=prompt_t.format(**vars_))])
     
     return {"messages": [SystemMessage(content=res.content)], "final": res.content}
