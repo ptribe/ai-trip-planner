@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-neutral-50 text-neutral-900 antialiased font-[Inter]">
   <!-- Nav -->
@@ -293,6 +294,103 @@
     const results = document.getElementById('results');
     const placeholderCard = document.getElementById('placeholderCard');
 
+    // PDF Generation Function
+    function generatePDF() {
+      const content = document.getElementById('pdfContent');
+      if (!content) {
+        alert('No content to download');
+        return;
+      }
+
+      const destination = (document.getElementById('destination').value || 'Trip').trim();
+      const filename = `${destination.replace(/[^a-z0-9]/gi, '_')}_Itinerary.pdf`;
+
+      // Create a wrapper with styling for PDF
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'font-family: Inter, sans-serif; padding: 40px; background: white; color: #171717;';
+
+      // Add header
+      const header = document.createElement('div');
+      header.style.cssText = 'margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #4f46e5;';
+      header.innerHTML = `
+        <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #4f46e5;">
+          ${destination} Travel Itinerary
+        </h1>
+        <p style="margin: 10px 0 0 0; color: #737373; font-size: 14px;">
+          Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      `;
+      wrapper.appendChild(header);
+
+      // Clone content and style it
+      const contentClone = content.cloneNode(true);
+      contentClone.style.cssText = `
+        font-size: 11px;
+        line-height: 1.6;
+        color: #171717;
+      `;
+
+      // Style all headings
+      contentClone.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+        h.style.color = '#171717';
+        h.style.fontWeight = '600';
+        h.style.marginTop = '20px';
+        h.style.marginBottom = '10px';
+      });
+
+      // Style all paragraphs
+      contentClone.querySelectorAll('p').forEach(p => {
+        p.style.marginBottom = '10px';
+        p.style.color = '#404040';
+      });
+
+      // Style lists
+      contentClone.querySelectorAll('ul, ol').forEach(list => {
+        list.style.marginBottom = '10px';
+        list.style.paddingLeft = '20px';
+      });
+
+      // Style list items
+      contentClone.querySelectorAll('li').forEach(li => {
+        li.style.marginBottom = '6px';
+        li.style.color = '#404040';
+      });
+
+      // Style links
+      contentClone.querySelectorAll('a').forEach(a => {
+        a.style.color = '#4f46e5';
+        a.style.textDecoration = 'underline';
+      });
+
+      // Style strong/bold text
+      contentClone.querySelectorAll('strong, b').forEach(el => {
+        el.style.fontWeight = '600';
+        el.style.color = '#171717';
+      });
+
+      wrapper.appendChild(contentClone);
+
+      // PDF options
+      const opt = {
+        margin: [15, 15, 15, 15],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          letterRendering: true
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      };
+
+      // Generate PDF
+      html2pdf().set(opt).from(wrapper).save();
+    }
+
     async function submitToBackend(e) {
       e.preventDefault();
 
@@ -335,16 +433,25 @@
           <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
             <div class="mb-3 flex items-center justify-between">
               <h3 class="text-xl font-semibold tracking-tight">Your Itinerary</h3>
-              <button id="printBtn" class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">
-                <i data-lucide="printer" class="h-4 w-4"></i> Print / PDF
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="downloadPdfBtn" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 transition">
+                  <i data-lucide="download" class="h-4 w-4"></i> Download PDF
+                </button>
+                <button id="printBtn" class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">
+                  <i data-lucide="printer" class="h-4 w-4"></i> Print
+                </button>
+              </div>
             </div>
-            <div class="prose max-w-none">${content}</div>
+            <div id="pdfContent" class="prose max-w-none">${content}</div>
           </div>
         `;
         renderIcons();
+
         const printBtn = document.getElementById('printBtn');
         printBtn?.addEventListener('click', () => window.print());
+
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        downloadPdfBtn?.addEventListener('click', () => generatePDF());
       } catch (err) {
         results.innerHTML = `
           <div class="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
