@@ -521,7 +521,7 @@ def economic_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["economic", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "economic")
                 current_span.set_attribute("metadata.agent_node", "economic_agent")
@@ -572,7 +572,7 @@ def political_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["political", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "political")
                 current_span.set_attribute("metadata.agent_node", "political_agent")
@@ -623,7 +623,7 @@ def security_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["security", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "security")
                 current_span.set_attribute("metadata.agent_node", "security_agent")
@@ -674,7 +674,7 @@ def operational_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["operational", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "operational")
                 current_span.set_attribute("metadata.agent_node", "operational_agent")
@@ -725,7 +725,7 @@ def events_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["events", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "events")
                 current_span.set_attribute("metadata.agent_node", "events_agent")
@@ -795,7 +795,7 @@ def synthesis_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["synthesis", "executive"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "synthesis")
                 current_span.set_attribute("metadata.agent_node", "synthesis_agent")
