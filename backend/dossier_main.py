@@ -890,7 +890,6 @@ if _TRACING:
                 space_id=space_id,
                 api_key=api_key,
                 project_name="intelligence-dossier-agent",
-                model_id="dossier-agent-v1",
             )
 
             # Auto-instrument LangChain for complete graph/agent/tool tracing
