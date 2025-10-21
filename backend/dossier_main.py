@@ -474,7 +474,7 @@ def cultural_agent(state: DossierState) -> DossierState:
     calls: List[Dict[str, Any]] = []
 
     with using_attributes(tags=["cultural", "intelligence"]):
-        with using_metadata(agent_type="cultural", agent_node="cultural_agent", location=location):
+        with using_metadata({"agent_type": "cultural", "agent_node": "cultural_agent", "location": location}):
             with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
                 res = agent.invoke(messages)
 
