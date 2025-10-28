@@ -9,7 +9,6 @@ import sys
 import subprocess
 import json
 import time
-from datetime import datetime
 try:
     from anthropic import Anthropic
     ANTHROPIC_SDK_AVAILABLE = True
@@ -101,56 +100,113 @@ Please provide a comprehensive code review covering:
 8. **Suggestions**: Specific improvements with code examples where helpful
 
 Format your review as follows:
-- Use ✅ for things done well
-- Use ⚠️ for warnings/concerns
-- Use ❌ for critical issues
-- Use 💡 for suggestions
+- Use CHECK for things done well
+- Use WARNING for warnings/concerns
+- Use X for critical issues
+- Use LIGHTBULB for suggestions
 
 Be constructive, specific, and provide actionable feedback. If the code looks good, say so!
 """
 
     try:
         if use_session_auth:
-            # Use Claude web API with session token
+            # Use Claude.ai web API with session token
             print("Using Claude session authentication (Claude Max account)")
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json',
-                'anthropic-version': '2023-06-01'
-            }
 
-            payload = {
-                'model': 'claude-sonnet-4-20250514',
-                'max_tokens': 4000,
-                'messages': [
-                    {'role': 'user', 'content': prompt}
-                ]
-            }
-
-            response = requests.post(
-                'https://api.claude.ai/api/messages',
-                headers=headers,
-                json=payload,
-                timeout=60
+            # Create a new conversation
+            create_response = requests.post(
+                'https://claude.ai/api/organizations',
+                headers={
+                    'Cookie': f'sessionKey={access_token}',
+                    'Content-Type': 'application/json'
+                },
+                timeout=30
             )
 
-            if response.status_code == 200:
-                result = response.json()
-                review = result['content'][0]['text']
-            else:
-                print(f"Claude API error: {response.status_code} - {response.text}")
-                return f"""## ⚠️ Code Review Error
+            if create_response.status_code != 200:
+                print(f"Failed to get organization: {create_response.status_code}")
+                return f"""## WARNING Code Review Error
+
+Failed to authenticate with Claude using session token.
+Status: {create_response.status_code}
+
+Please check that your CLAUDE_ACCESS_TOKEN is valid and not expired.
+You may need to refresh your token from https://claude.ai/
+"""
+
+            orgs = create_response.json()
+            if not orgs:
+                return """## WARNING Code Review Error
+
+No organizations found for this Claude account.
+"""
+
+            org_uuid = orgs[0]['uuid']
+
+            # Create conversation
+            conv_response = requests.post(
+                f'https://claude.ai/api/organizations/{org_uuid}/chat_conversations',
+                headers={
+                    'Cookie': f'sessionKey={access_token}',
+                    'Content-Type': 'application/json'
+                },
+                json={'name': 'Code Review', 'uuid': str(time.time())},
+                timeout=30
+            )
+
+            if conv_response.status_code != 201:
+                print(f"Failed to create conversation: {conv_response.status_code}")
+                return f"""## WARNING Code Review Error
+
+Failed to create conversation.
+Status: {conv_response.status_code}
+"""
+
+            conv_uuid = conv_response.json()['uuid']
+
+            # Send message
+            message_response = requests.post(
+                f'https://claude.ai/api/organizations/{org_uuid}/chat_conversations/{conv_uuid}/completion',
+                headers={
+                    'Cookie': f'sessionKey={access_token}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'prompt': prompt,
+                    'model': 'claude-sonnet-4-20250514',
+                    'timezone': 'UTC'
+                },
+                timeout=120,
+                stream=True
+            )
+
+            if message_response.status_code != 200:
+                print(f"Claude API error: {message_response.status_code} - {message_response.text}")
+                return f"""## WARNING Code Review Error
 
 Failed to generate review using Claude session authentication.
-Status: {response.status_code}
+Status: {message_response.status_code}
 
 Please check that your CLAUDE_ACCESS_TOKEN is valid and not expired.
 """
+
+            # Parse streaming response
+            review = ""
+            for line in message_response.iter_lines():
+                if line:
+                    line_text = line.decode('utf-8')
+                    if line_text.startswith('data: '):
+                        try:
+                            data = json.loads(line_text[6:])
+                            if 'completion' in data:
+                                review = data['completion']
+                        except json.JSONDecodeError:
+                            continue
         else:
             # Use Anthropic SDK with API key
             print("Using Anthropic API key authentication")
             if not ANTHROPIC_SDK_AVAILABLE:
-                return """## ⚠️ Code Review Error
+                return """## WARNING Code Review Error
 
 Anthropic SDK not available. Please install it with: pip install anthropic
 """
@@ -165,12 +221,12 @@ Anthropic SDK not available. Please install it with: pip install anthropic
             review = message.content[0].text
 
         # Format the review as a GitHub comment
-        github_comment = f"""## 🤖 Claude Code Review
+        github_comment = f"""## ROBOT Claude Code Review
 
 {review}
 
 ---
-*Automated review by Claude AI • [Learn more](https://claude.ai)*
+*Automated review by Claude AI - [Learn more](https://claude.ai)*
 """
 
         return github_comment
@@ -179,7 +235,7 @@ Anthropic SDK not available. Please install it with: pip install anthropic
         print(f"Error calling Claude API: {e}")
         import traceback
         traceback.print_exc()
-        return f"""## ⚠️ Code Review Error
+        return f"""## WARNING Code Review Error
 
 An error occurred while generating the code review:
 ```
