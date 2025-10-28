@@ -7,7 +7,15 @@ Analyzes PR changes and provides comprehensive code review using Claude AI.
 import os
 import sys
 import subprocess
-from anthropic import Anthropic
+import json
+import time
+from datetime import datetime
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_SDK_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_SDK_AVAILABLE = False
+import requests
 
 def get_pr_diff():
     """Get the diff for the PR."""
@@ -42,12 +50,17 @@ def read_file_content(filepath):
 def generate_review(diff, changed_files, pr_title, pr_body):
     """Generate code review using Claude."""
 
+    # Check for Claude session tokens (preferred for Claude Max accounts)
+    access_token = os.getenv('CLAUDE_ACCESS_TOKEN')
+
+    # Fall back to Anthropic API key if session tokens not available
     api_key = os.getenv('ANTHROPIC_API_KEY')
-    if not api_key:
-        print("Error: ANTHROPIC_API_KEY not set")
+
+    if not access_token and not api_key:
+        print("Error: Neither CLAUDE_ACCESS_TOKEN nor ANTHROPIC_API_KEY is set")
         sys.exit(1)
 
-    client = Anthropic(api_key=api_key)
+    use_session_auth = bool(access_token)
 
     # Prepare file contents for context
     file_contents = []
@@ -97,15 +110,59 @@ Be constructive, specific, and provide actionable feedback. If the code looks go
 """
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
+        if use_session_auth:
+            # Use Claude web API with session token
+            print("Using Claude session authentication (Claude Max account)")
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            }
 
-        review = message.content[0].text
+            payload = {
+                'model': 'claude-sonnet-4-20250514',
+                'max_tokens': 4000,
+                'messages': [
+                    {'role': 'user', 'content': prompt}
+                ]
+            }
+
+            response = requests.post(
+                'https://api.claude.ai/api/messages',
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                review = result['content'][0]['text']
+            else:
+                print(f"Claude API error: {response.status_code} - {response.text}")
+                return f"""## ⚠️ Code Review Error
+
+Failed to generate review using Claude session authentication.
+Status: {response.status_code}
+
+Please check that your CLAUDE_ACCESS_TOKEN is valid and not expired.
+"""
+        else:
+            # Use Anthropic SDK with API key
+            print("Using Anthropic API key authentication")
+            if not ANTHROPIC_SDK_AVAILABLE:
+                return """## ⚠️ Code Review Error
+
+Anthropic SDK not available. Please install it with: pip install anthropic
+"""
+            client = Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4000,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            review = message.content[0].text
 
         # Format the review as a GitHub comment
         github_comment = f"""## 🤖 Claude Code Review
@@ -120,6 +177,8 @@ Be constructive, specific, and provide actionable feedback. If the code looks go
 
     except Exception as e:
         print(f"Error calling Claude API: {e}")
+        import traceback
+        traceback.print_exc()
         return f"""## ⚠️ Code Review Error
 
 An error occurred while generating the code review:
