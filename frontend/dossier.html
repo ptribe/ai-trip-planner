@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Intelligence Dossier Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased font-[Inter]">
+  <!-- Nav -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-red-600 via-orange-600 to-amber-600 text-white">
+          <i data-lucide="shield" class="h-5 w-5"></i>
+        </span>
+        <span class="text-lg font-semibold tracking-tight">Intelligence Dossier Agent</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+        <span>SYSTEM OPERATIONAL</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="mx-auto max-w-7xl px-6 pt-10 pb-8">
+    <div class="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900">
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute inset-0 bg-gradient-to-br from-red-500 via-orange-500 to-amber-500"></div>
+      </div>
+      <div class="relative grid gap-6 p-8 md:grid-cols-3 md:p-12">
+        <div class="md:col-span-2">
+          <div class="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-red-400 text-xs font-medium mb-4">
+            <span class="inline-flex h-1.5 w-1.5 rounded-full bg-red-500"></span>
+            CLASSIFIED // INTERNAL USE ONLY
+          </div>
+          <h1 class="text-white text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+            Intelligence Dossier Generator
+          </h1>
+          <p class="mt-3 text-slate-300 text-base md:text-lg">
+            Generate comprehensive intelligence reports on any global location. From cultural analysis to security assessments—all intelligence domains in one dossier.
+          </p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="globe" class="h-4 w-4"></i>
+              6 Intelligence Domains
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="zap" class="h-4 w-4"></i>
+              Parallel Analysis
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white text-sm">
+              <i data-lucide="file-text" class="h-4 w-4"></i>
+              Executive Summary
+            </div>
+          </div>
+        </div>
+        <div class="hidden md:block">
+          <div class="relative h-full w-full rounded-xl bg-slate-800/50 p-4 ring-1 ring-slate-700 backdrop-blur">
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 text-slate-400 text-sm">
+                <i data-lucide="layers" class="h-4 w-4 text-amber-500"></i>
+                <span class="font-mono">MULTI-AGENT SYSTEM</span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Cultural Intelligence</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Economic Intelligence</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Political Intelligence</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Security Intelligence</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Operational Intelligence</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-400">Events Intelligence</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature cards -->
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-amber-500">
+            <i data-lucide="users" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Cultural Intel</div>
+            <p class="text-sm text-slate-400">Social dynamics, customs, local sentiment</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-emerald-500">
+            <i data-lucide="trending-up" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Economic Intel</div>
+            <p class="text-sm text-slate-400">GDP, business networks, HNWI profiles</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-blue-500">
+            <i data-lucide="landmark" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Political Intel</div>
+            <p class="text-sm text-slate-400">Government structure, tensions, officials</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-red-500">
+            <i data-lucide="shield-alert" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Security Intel</div>
+            <p class="text-sm text-slate-400">Threats, crime patterns, infrastructure</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-violet-500">
+            <i data-lucide="map" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Operational Intel</div>
+            <p class="text-sm text-slate-400">POIs, logistics, support resources</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-orange-500">
+            <i data-lucide="calendar" class="h-5 w-5"></i>
+          </span>
+          <div>
+            <div class="font-semibold tracking-tight">Events Intel</div>
+            <p class="text-sm text-slate-400">Local events, celebrations, gatherings</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dossier Generator -->
+  <main class="mx-auto max-w-7xl px-6 pb-20">
+    <div class="grid gap-6 lg:grid-cols-3">
+      <!-- Form -->
+      <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+        <h2 class="text-2xl font-semibold tracking-tight">Generate Dossier</h2>
+        <p class="mt-1 text-sm text-slate-400">Enter target location and mission parameters.</p>
+
+        <form id="dossierForm" class="mt-6 space-y-4" autocomplete="off">
+          <!-- Location -->
+          <div>
+            <label for="location" class="block text-sm font-medium text-slate-200">Target Location</label>
+            <div class="mt-2 relative">
+              <input id="location" type="text" required placeholder="e.g., Paris, France"
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-slate-100 placeholder-slate-500 shadow-sm outline-none ring-0 focus:border-slate-600 focus:ring-2 focus:ring-slate-700" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <i data-lucide="crosshair" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Mission Duration -->
+          <div>
+            <label for="mission_duration" class="block text-sm font-medium text-slate-200">Mission Duration (optional)</label>
+            <div class="mt-2 relative">
+              <input id="mission_duration" type="text" placeholder="e.g., 6 months"
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-slate-100 placeholder-slate-500 shadow-sm outline-none ring-0 focus:border-slate-600 focus:ring-2 focus:ring-slate-700" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <i data-lucide="clock" class="h-4.5 w-4.5"></i>
+              </span>
+            </div>
+          </div>
+
+          <!-- Mission Objectives -->
+          <div>
+            <label for="mission_objectives" class="block text-sm font-medium text-slate-200">Mission Objectives (optional)</label>
+            <div class="mt-2">
+              <textarea id="mission_objectives" rows="3" placeholder="e.g., Establish local network and gather economic intelligence"
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-slate-100 placeholder-slate-500 shadow-sm outline-none ring-0 focus:border-slate-600 focus:ring-2 focus:ring-slate-700"></textarea>
+            </div>
+          </div>
+
+          <!-- Risk Tolerance -->
+          <div class="relative">
+            <label class="block text-sm font-medium text-slate-200">Risk Tolerance</label>
+            <input id="riskValue" type="hidden" value="medium" />
+            <button id="riskBtn" type="button"
+                    class="mt-2 w-full inline-flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-left text-slate-100 shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700">
+              <span id="riskLabel">Medium</span>
+              <i data-lucide="chevron-down" class="h-4.5 w-4.5 text-slate-400"></i>
+            </button>
+            <div id="riskMenu" class="absolute z-20 mt-2 hidden w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-lg">
+              <button data-value="low" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-slate-700 text-slate-100">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="shield-check" class="h-4 w-4 text-emerald-500"></i>
+                  Low
+                </span>
+              </button>
+              <button data-value="medium" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-slate-700 text-slate-100">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="shield" class="h-4 w-4 text-amber-500"></i>
+                  Medium
+                </span>
+              </button>
+              <button data-value="high" class="flex w-full items-center justify-between px-3.5 py-2.5 text-sm hover:bg-slate-700 text-slate-100">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="shield-alert" class="h-4 w-4 text-red-500"></i>
+                  High
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="pt-2">
+            <button type="submit"
+                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 px-4 py-3 text-white shadow-lg transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-amber-500">
+              <i data-lucide="file-lock" class="h-5 w-5"></i>
+              <span class="font-semibold">Generate Dossier</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Output -->
+      <section class="lg:col-span-2 space-y-6">
+        <div id="placeholderCard" class="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center shadow-lg">
+          <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-800 text-amber-500 mb-4">
+            <i data-lucide="file-text" class="h-8 w-8"></i>
+          </div>
+          <h3 class="text-xl md:text-2xl font-semibold tracking-tight">Enter location to generate intelligence dossier</h3>
+          <p class="mt-2 text-slate-400">Fill out the form on the left—your comprehensive intelligence report will appear here.</p>
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-lg border border-slate-800 bg-slate-800/50 p-4">
+              <div class="flex items-center gap-2 text-slate-300">
+                <i data-lucide="eye" class="h-4 w-4 text-amber-500"></i>
+                Real-time Intel
+              </div>
+              <p class="mt-1 text-sm text-slate-400">Current conditions and trends</p>
+            </div>
+            <div class="rounded-lg border border-slate-800 bg-slate-800/50 p-4">
+              <div class="flex items-center gap-2 text-slate-300">
+                <i data-lucide="crosshair" class="h-4 w-4 text-red-500"></i>
+                Threat Analysis
+              </div>
+              <p class="mt-1 text-sm text-slate-400">Security and risk assessment</p>
+            </div>
+            <div class="rounded-lg border border-slate-800 bg-slate-800/50 p-4">
+              <div class="flex items-center gap-2 text-slate-300">
+                <i data-lucide="users" class="h-4 w-4 text-blue-500"></i>
+                POI Profiles
+              </div>
+              <p class="mt-1 text-sm text-slate-400">Key individuals and networks</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="results" class="hidden space-y-6"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800 bg-slate-900">
+    <div class="mx-auto max-w-7xl px-6 py-10 text-sm text-slate-400">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-tr from-red-600 to-amber-600 text-white">
+            <i data-lucide="shield" class="h-4.5 w-4.5"></i>
+          </span>
+          <span>&copy; <span id="year"></span> Intelligence Dossier Agent</span>
+        </div>
+        <div class="text-xs text-slate-500 font-mono">
+          CLASSIFIED // INTERNAL USE ONLY
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    // Initialize icons and year
+    function renderIcons() { if (window.lucide) lucide.createIcons(); }
+    document.getElementById('year').textContent = new Date().getFullYear();
+    renderIcons();
+
+    // Custom risk tolerance select
+    const riskBtn = document.getElementById('riskBtn');
+    const riskMenu = document.getElementById('riskMenu');
+    const riskLabel = document.getElementById('riskLabel');
+    const riskValue = document.getElementById('riskValue');
+
+    riskBtn.addEventListener('click', () => {
+      riskMenu.classList.toggle('hidden');
+    });
+
+    riskMenu.querySelectorAll('button[data-value]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-value');
+        riskValue.value = val;
+        riskLabel.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+        riskMenu.classList.add('hidden');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!riskBtn.contains(e.target) && !riskMenu.contains(e.target)) {
+        riskMenu.classList.add('hidden');
+      }
+    });
+
+    // Dossier generation logic
+    const form = document.getElementById('dossierForm');
+    const results = document.getElementById('results');
+    const placeholderCard = document.getElementById('placeholderCard');
+
+    async function submitToBackend(e) {
+      e.preventDefault();
+
+      const location = (document.getElementById('location').value || '').trim();
+      const mission_duration = (document.getElementById('mission_duration').value || '').trim();
+      const mission_objectives = (document.getElementById('mission_objectives').value || '').trim();
+      const risk_tolerance = document.getElementById('riskValue').value || 'medium';
+
+      if (!location) {
+        alert('Please enter a target location.');
+        return;
+      }
+
+      placeholderCard.classList.add('hidden');
+      results.classList.remove('hidden');
+      results.innerHTML = `
+        <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+          <div class="flex items-center gap-3 text-slate-300">
+            <i data-lucide="loader-2" class="h-5 w-5 animate-spin text-amber-500"></i>
+            Generating intelligence dossier... This may take 30-60 seconds.
+          </div>
+          <div class="mt-4 space-y-2 text-sm text-slate-400">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Analyzing cultural intelligence...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Gathering economic data...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Assessing political climate...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Evaluating security threats...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Mapping operational resources...</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Tracking local events...</span>
+            </div>
+          </div>
+        </div>
+      `;
+      renderIcons();
+
+      try {
+        const payload = { location, risk_tolerance };
+        if (mission_duration) payload.mission_duration = mission_duration;
+        if (mission_objectives) payload.mission_objectives = mission_objectives;
+
+        const resp = await fetch('/generate-dossier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        // Build results HTML
+        let html = '';
+
+        // Executive Summary
+        if (data.executive_summary) {
+          const summaryHtml = (window.marked && window.marked.parse)
+            ? window.marked.parse(data.executive_summary)
+            : `<pre class="whitespace-pre-wrap">${data.executive_summary}</pre>`;
+          html += `
+            <div class="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 shadow-lg">
+              <div class="flex items-center gap-2 mb-3">
+                <i data-lucide="file-text" class="h-5 w-5 text-amber-500"></i>
+                <h3 class="text-xl font-bold tracking-tight">Executive Summary</h3>
+              </div>
+              <div class="prose prose-invert max-w-none prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-200 prose-ul:text-slate-300">
+                ${summaryHtml}
+              </div>
+            </div>
+          `;
+        }
+
+        // Intelligence sections
+        const sections = [
+          { key: 'cultural_intel', title: 'Cultural Intelligence', icon: 'users', color: 'amber' },
+          { key: 'economic_intel', title: 'Economic Intelligence', icon: 'trending-up', color: 'emerald' },
+          { key: 'political_intel', title: 'Political Intelligence', icon: 'landmark', color: 'blue' },
+          { key: 'security_intel', title: 'Security Intelligence', icon: 'shield-alert', color: 'red' },
+          { key: 'operational_intel', title: 'Operational Intelligence', icon: 'map', color: 'violet' },
+          { key: 'events_intel', title: 'Events Intelligence', icon: 'calendar', color: 'orange' }
+        ];
+
+        sections.forEach(section => {
+          if (data[section.key]) {
+            const content = (window.marked && window.marked.parse)
+              ? window.marked.parse(data[section.key])
+              : `<pre class="whitespace-pre-wrap">${data[section.key]}</pre>`;
+            html += `
+              <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+                <div class="flex items-center gap-2 mb-3">
+                  <i data-lucide="${section.icon}" class="h-5 w-5 text-${section.color}-500"></i>
+                  <h3 class="text-xl font-semibold tracking-tight">${section.title}</h3>
+                </div>
+                <div class="prose prose-invert max-w-none prose-headings:text-slate-100 prose-p:text-slate-300 prose-strong:text-slate-200 prose-ul:text-slate-300">
+                  ${content}
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        // Tool calls summary
+        if (data.tool_calls && data.tool_calls.length > 0) {
+          const byAgent = {};
+          data.tool_calls.forEach(call => {
+            const agent = call.agent || 'unknown';
+            if (!byAgent[agent]) byAgent[agent] = [];
+            byAgent[agent].push(call.tool || 'unknown');
+          });
+
+          let toolHtml = '<div class="space-y-2">';
+          Object.entries(byAgent).forEach(([agent, tools]) => {
+            toolHtml += `
+              <div class="text-sm">
+                <span class="font-semibold text-slate-300">${agent.toUpperCase()}:</span>
+                <span class="text-slate-400"> ${tools.join(', ')}</span>
+              </div>
+            `;
+          });
+          toolHtml += '</div>';
+
+          html += `
+            <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+              <div class="flex items-center gap-2 mb-3">
+                <i data-lucide="activity" class="h-5 w-5 text-slate-400"></i>
+                <h3 class="text-lg font-semibold tracking-tight">Intelligence Sources</h3>
+              </div>
+              ${toolHtml}
+            </div>
+          `;
+        }
+
+        results.innerHTML = html;
+        renderIcons();
+      } catch (err) {
+        results.innerHTML = `
+          <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-red-400">
+            <div class="flex items-center gap-2">
+              <i data-lucide="alert-triangle" class="h-5 w-5"></i>
+              <span>Failed to generate dossier. Please try again.</span>
+            </div>
+          </div>
+        `;
+        renderIcons();
+        console.error('Dossier generation error:', err);
+      }
+    }
+
+    form.addEventListener('submit', submitToBackend);
+  </script>
+</body>
+</html>
