@@ -14,13 +14,14 @@ from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
-# Minimal observability via Arize/OpenInference (optional)
+# Arize AX Observability via OpenInference
 try:
     from arize.otel import register
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.litellm import LiteLLMInstrumentor
     from openinference.instrumentation import using_prompt_template, using_metadata, using_attributes
-    from opentelemetry import trace
+    from opentelemetry import trace as trace_api
+    from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
     _TRACING = True
 except Exception:
     def using_prompt_template(**kwargs):  # type: ignore
@@ -41,6 +42,18 @@ except Exception:
         def _noop():
             yield
         return _noop()
+
+    class SpanAttributes:  # type: ignore
+        OPENINFERENCE_SPAN_KIND = "openinference.span.kind"
+        INPUT_VALUE = "input.value"
+        OUTPUT_VALUE = "output.value"
+
+    class OpenInferenceSpanKindValues:  # type: ignore
+        AGENT = "AGENT"
+        CHAIN = "CHAIN"
+        TOOL = "TOOL"
+        LLM = "LLM"
+
     _TRACING = False
 
 # LangGraph + LangChain
@@ -461,14 +474,9 @@ def cultural_agent(state: DossierState) -> DossierState:
     calls: List[Dict[str, Any]] = []
 
     with using_attributes(tags=["cultural", "intelligence"]):
-        if _TRACING:
-            current_span = trace.get_current_span()
-            if current_span:
-                current_span.set_attribute("metadata.agent_type", "cultural")
-                current_span.set_attribute("metadata.agent_node", "cultural_agent")
-
-        with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
-            res = agent.invoke(messages)
+        with using_metadata({"agent_type": "cultural", "agent_node": "cultural_agent", "location": location}):
+            with using_prompt_template(template=prompt_t, variables=vars_, version="v1"):
+                res = agent.invoke(messages)
 
     if getattr(res, "tool_calls", None):
         for c in res.tool_calls:
@@ -513,7 +521,7 @@ def economic_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["economic", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "economic")
                 current_span.set_attribute("metadata.agent_node", "economic_agent")
@@ -564,7 +572,7 @@ def political_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["political", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "political")
                 current_span.set_attribute("metadata.agent_node", "political_agent")
@@ -615,7 +623,7 @@ def security_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["security", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "security")
                 current_span.set_attribute("metadata.agent_node", "security_agent")
@@ -666,7 +674,7 @@ def operational_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["operational", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "operational")
                 current_span.set_attribute("metadata.agent_node", "operational_agent")
@@ -717,7 +725,7 @@ def events_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["events", "intelligence"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "events")
                 current_span.set_attribute("metadata.agent_node", "events_agent")
@@ -787,7 +795,7 @@ def synthesis_agent(state: DossierState) -> DossierState:
 
     with using_attributes(tags=["synthesis", "executive"]):
         if _TRACING:
-            current_span = trace.get_current_span()
+            current_span = trace_api.get_current_span()
             if current_span:
                 current_span.set_attribute("metadata.agent_type", "synthesis")
                 current_span.set_attribute("metadata.agent_node", "synthesis_agent")
@@ -868,17 +876,41 @@ def health():
     return {"status": "healthy", "service": "intelligence-dossier-agent"}
 
 
-# Initialize tracing at startup
+# Initialize Arize AX tracing at startup
 if _TRACING:
     try:
         space_id = os.getenv("ARIZE_SPACE_ID")
         api_key = os.getenv("ARIZE_API_KEY")
         if space_id and api_key:
-            tp = register(space_id=space_id, api_key=api_key, project_name="intelligence-dossier-agent")
-            LangChainInstrumentor().instrument(tracer_provider=tp, include_chains=True, include_agents=True, include_tools=True)
-            LiteLLMInstrumentor().instrument(tracer_provider=tp, skip_dep_check=True)
-    except Exception:
-        pass
+            print(f"🔍 Initializing Arize AX observability for project: intelligence-dossier-agent")
+            print(f"📊 Traces will be available at: https://app.arize.com/")
+
+            # Register tracer provider with Arize
+            tp = register(
+                space_id=space_id,
+                api_key=api_key,
+                project_name="intelligence-dossier-agent",
+            )
+
+            # Auto-instrument LangChain for complete graph/agent/tool tracing
+            LangChainInstrumentor().instrument(
+                tracer_provider=tp,
+                include_chains=True,
+                include_agents=True,
+                include_tools=True
+            )
+
+            # Auto-instrument LiteLLM for LLM call tracing
+            LiteLLMInstrumentor().instrument(
+                tracer_provider=tp,
+                skip_dep_check=True
+            )
+
+            print("✅ Arize AX instrumentation complete - all agents will be traced")
+        else:
+            print("⚠️  Arize credentials not found. Set ARIZE_SPACE_ID and ARIZE_API_KEY to enable tracing")
+    except Exception as e:
+        print(f"⚠️  Failed to initialize Arize tracing: {e}")
 
 
 @app.post("/generate-dossier", response_model=DossierResponse)
@@ -893,15 +925,35 @@ def generate_dossier(req: DossierRequest):
         "poi_profiles": [],
     }
 
-    # Add session tracking
+    # Add session tracking and root span
     attrs_kwargs = {}
     if req.session_id:
         attrs_kwargs["session_id"] = req.session_id
     if req.user_id:
         attrs_kwargs["user_id"] = req.user_id
 
-    with using_attributes(**attrs_kwargs):
-        out = graph.invoke(state)
+    # Create root span for the entire dossier generation workflow
+    tracer = trace_api.get_tracer(__name__) if _TRACING else None
+
+    if _TRACING and tracer:
+        with tracer.start_as_current_span(
+            "generate_dossier",
+            attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value if hasattr(OpenInferenceSpanKindValues.CHAIN, 'value') else "CHAIN",
+                SpanAttributes.INPUT_VALUE: f"Generate intelligence dossier for {req.location}",
+                "dossier.location": req.location,
+                "dossier.mission_duration": req.mission_duration or "not_specified",
+                "dossier.risk_tolerance": req.risk_tolerance,
+            }
+        ) as root_span:
+            with using_attributes(**attrs_kwargs):
+                out = graph.invoke(state)
+
+            # Set output on root span
+            root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, out.get("executive_summary", "")[:500])
+    else:
+        with using_attributes(**attrs_kwargs):
+            out = graph.invoke(state)
 
     return DossierResponse(
         executive_summary=out.get("executive_summary", ""),

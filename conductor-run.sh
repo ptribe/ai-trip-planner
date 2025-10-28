@@ -20,14 +20,14 @@ echo "🚀 Starting AI Trip Planner..."
 echo "📡 Starting backend server..."
 
 cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
+uvicorn dossier_main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend started with PID: $BACKEND_PID"
 
 echo ""
 echo "✅ Service started successfully!"
 echo "📡 Backend API: http://localhost:8000"
-echo "🖥️  Minimal UI served at / (frontend/index.html)"
+echo "🖥️  Minimal UI served at / (frontend/dossier.html)"
 echo "📊 Arize Traces: https://app.arize.com/"
 echo ""
 echo "Press Ctrl+C to stop the service"
